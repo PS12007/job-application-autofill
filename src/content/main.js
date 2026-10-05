@@ -28,7 +28,7 @@
       }
       const filler = WDA.fillers[step.key] || WDA.fillers.unknown;
       try {
-        await WDA.withTimeout(filler(ctx), settings.totalTimeout, 'Whole-page timeout hit; partial results kept.');
+        await WDA.withTimeout(filler(ctx), settings.totalTimeoutMs, 'Whole-page timeout hit; partial results kept.');
       } catch (e) {
         ctx.note = e.message || String(e);
       }

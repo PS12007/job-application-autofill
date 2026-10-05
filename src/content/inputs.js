@@ -372,6 +372,24 @@
     return input.isConnected ? input : box.querySelector(S().controls.promptInput) || input;
   }
 
+  /** Results seen by the last search — shown in the failure reason to aid debugging. */
+  let promptSeen = [];
+
+  /**
+   * Search-term variants for institution names: "X University" ↔ "University of X",
+   * with and without a leading "The".
+   */
+  function nameVariants(term) {
+    const t = term.replace(/^the\s+/i, '').trim();
+    const out = [];
+    let m;
+    if ((m = t.match(/^(.+?)\s+(university|college)$/i))) out.push(`${m[2]} of ${m[1]}`);
+    if ((m = t.match(/^(university|college)\s+of\s+(.+)$/i))) out.push(`${m[2]} ${m[1]}`);
+    if (t !== term) out.push(t);
+    else if (/^(university|college)\s+of\b/i.test(t)) out.push(`The ${t}`);
+    return out;
+  }
+
   /**
    * Type a term, press Enter, wait for results, click the option chosen by pick()
    * (default: best match for the term). Follows sub-menus up to 3 levels.
@@ -385,9 +403,28 @@
     WDA.pressKey(input, 'Enter');
 
     for (let level = 0; level < 3; level++) {
-      const hit = await WDA.waitFor(() => pick(promptOptions()) || (noItemsShown() ? 'none' : null), { timeout: 4000 });
+      // Workday may flash "No Items." before results arrive, so only trust it once it
+      // has stayed on screen for a while; otherwise keep waiting for results.
+      const started = Date.now();
+      let noneSince = 0;
+      const hit = await WDA.waitFor(
+        () => {
+          const opts = promptOptions();
+          for (const o of opts.slice(0, 6)) if (!promptSeen.includes(optText(o)) && promptSeen.length < 8) promptSeen.push(optText(o));
+          const m = pick(opts);
+          if (m) return m;
+          if (!opts.length && noItemsShown()) {
+            noneSince = noneSince || Date.now();
+            if (Date.now() - noneSince > 1500 && Date.now() - started > 2000) {
+              return 'none';
+            }
+          } else noneSince = 0;
+          return null;
+        },
+        { timeout: 7000 }
+      );
       if (!hit || hit === 'none') {
-        WDA.log(`prompt: no usable result for "${term}"`, promptOptions().map(optText));
+        WDA.log(`prompt: no usable result for "${term}"`, promptSeen);
         return null;
       }
       const label = optText(hit);
@@ -428,7 +465,11 @@
     return null;
   }
 
-  const STOPWORDS = new Set(['and', 'of', 'the', 'in', 'for', 'with', 'engineering', 'science', 'sciences', 'studies', 'technology', 'general']);
+  const STOPWORDS = new Set([
+    'and', 'of', 'the', 'in', 'for', 'with', 'at',
+    'engineering', 'science', 'sciences', 'studies', 'technology', 'general',
+    'university', 'college', 'school', 'institute', 'polytechnic', 'state',
+  ]);
 
   /**
    * Returns the selected label or null. Tries: each "|" alternative (plus built-in
@@ -443,6 +484,9 @@
       if (live.value) WDA.setNativeValue(live, '');
     };
     const alts = WDA.expandAlternatives(value);
+    for (const a of [...alts]) {
+      for (const v of nameVariants(a)) if (!alts.some((x) => WDA.norm(x) === WDA.norm(v))) alts.push(v);
+    }
     for (const term of alts) {
       const label = await searchPrompt(input, box, term);
       if (label) return label;
@@ -490,6 +534,7 @@
           added.push(v);
           continue;
         }
+        promptSeen = [];
         const label = await selectInPrompt(t.control, box, v);
         if (label) {
           added.push(v);
@@ -507,7 +552,8 @@
 
     const subNote = substituted.length ? `closest match used: ${substituted.join('; ')}` : '';
     if (!missing.length) return ok(subNote || (multi ? `${added.length} selected` : ''));
-    if (!multi) return fail(`no search result matches "${WDA.firstAlt(values[0])}" — add alternatives with | (e.g. "…|Other")`);
+    const seen = promptSeen.length ? ` Last results seen: ${promptSeen.join(' / ')}.` : ' No results appeared.';
+    if (!multi) return fail(`no search result matches "${WDA.firstAlt(values[0])}".${seen} Add alternatives with | (e.g. "…|Other")`);
     return skip(`${added.length} added; no match for: ${missing.join(', ')}`);
   }
 
@@ -527,9 +573,33 @@
     return !!(await WDA.waitFor(() => isChecked(el) === wantChecked, { timeout: 800 }));
   }
 
+  /** "Select all that apply" checkbox groups: answer "A; B; C" checks each listed option. */
+  async function fillChoiceMulti(opts, wanted, ctx) {
+    const picks = [];
+    const missing = [];
+    for (const w of wanted) {
+      const m = WDA.bestMatch(opts, w, (o) => o.text);
+      m ? picks.includes(m) || picks.push(m) : missing.push(w);
+    }
+    if (!picks.length) return fail(`no options match "${wanted.join('; ')}" (options: ${opts.map((o) => o.text).join(' / ')})`);
+    const extra = opts.filter((o) => isChecked(o.el) && !picks.includes(o));
+    if (picks.every((p) => isChecked(p.el)) && !extra.length) return ok('already set');
+    if (extra.length && !ctx.settings.overwrite) return skip(`already answered "${extra[0].text}"`);
+    for (const o of extra) await clickChoice(o.el, false);
+    const failed = [];
+    for (const p of picks) if (!isChecked(p.el) && !(await clickChoice(p.el, true))) failed.push(p.text);
+    if (failed.length) return fail(`could not check: ${failed.join(', ')}`);
+    const picked = picks.map((p) => p.text).join('; ');
+    return missing.length ? skip(`checked ${picked}; no option for: ${missing.join(', ')}`) : ok(picked);
+  }
+
   async function fillChoice(t, value, ctx) {
     const opts = choiceOptions(t.control);
     if (!opts.length) return fail('no options found');
+    const isCheckboxGroup = opts.some((o) => o.el.matches('input[type="checkbox"], [role="checkbox"]'));
+    if (isCheckboxGroup && typeof value === 'string' && value.includes(';')) {
+      return fillChoiceMulti(opts, value.split(';').map((s) => s.trim()).filter(Boolean), ctx);
+    }
     const want = WDA.bestMatch(opts, value, (o) => o.text);
     if (!want) return fail(`no option matches "${show(value)}" (options: ${opts.map((o) => o.text).join(' / ')})`);
     if (isChecked(want.el)) return ok('already set');

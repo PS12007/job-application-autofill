@@ -352,6 +352,8 @@
       ["Associate's Degree", 'Associates Degree', 'Associate Degree', 'Associates', 'College Diploma'],
       ['High School Diploma', 'High School', 'Secondary School', 'GED'],
       ['Mobile', 'Cell', 'Cell Phone', 'Mobile Phone', 'Cellular'],
+      // Schools known under several names (add your own the same way)
+      ['Western University', 'University of Western Ontario', 'The University of Western Ontario', 'Western Ontario', 'UWO'],
     ],
 
     /** Extra names used to spot a country inside a question's text. */

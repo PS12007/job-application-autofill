@@ -69,8 +69,8 @@
     debug: false, // console logging with the [WD-Autofill] prefix
     showFloatingButton: true,
     fieldDelay: 150, // ms pause between fields so Workday can re-render
-    fieldTimeout: 20000, // max ms for a single field
-    totalTimeout: 300000, // max ms for a whole page
+    fieldTimeoutMs: 60000, // max ms for a single field (search fields may try several names)
+    totalTimeoutMs: 600000, // max ms for a whole page
   });
 
   const isPlain = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);

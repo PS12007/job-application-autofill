@@ -64,8 +64,8 @@
         try {
           res = await WDA.withTimeout(
             WDA.fillTarget(target, value, ctx, opts),
-            settings.fieldTimeout,
-            `timed out after ${Math.round(settings.fieldTimeout / 1000)}s`
+            settings.fieldTimeoutMs,
+            `timed out after ${Math.round(settings.fieldTimeoutMs / 1000)}s`
           );
         } catch (e) {
           res = { status: 'failed', reason: e.message || String(e) };
