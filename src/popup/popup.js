@@ -26,8 +26,9 @@
         `<span class="${r.failed ? 'err' : ''}">Failed <b>${r.failed}</b></span>` +
         (r.note ? `<div class="note">${esc(r.note)}</div>` : '')
     );
-    const items = (r.details || []).filter((d) => d.status !== 'filled');
-    items.sort((a, b) => (a.status === 'failed' ? -1 : 0) - (b.status === 'failed' ? -1 : 0));
+    const items = (r.details || []).filter((d) => d.status !== 'filled' || / from /.test(' ' + d.reason));
+    const rank = { failed: 0, skipped: 1, filled: 2 };
+    items.sort((a, b) => rank[a.status] - rank[b.status]);
     $('details').innerHTML = items
       .map((d) => `<li class="${d.status}" title="${esc(d.reason)}">${esc(d.field)} — ${esc(d.reason)}</li>`)
       .join('');

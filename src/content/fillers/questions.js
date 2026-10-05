@@ -39,10 +39,18 @@
     const auth = pickAuthorization(label, wa.authorizations || []);
     const authSrc = auth ? `work authorization (${auth.country || 'first entry'})` : '';
     const L = profile.links || {};
+
+    // "Are you eligible to work in X (without requiring sponsorship)?" → authorization answer.
+    // "Will you now or in the future require sponsorship?" → sponsorship answer.
+    const isAuth = Q.authorized.test(label);
+    const isSponsor = Q.sponsorship.test(label);
+    if (auth && isAuth && auth.authorized && (!isSponsor || Q.withoutSponsorship.test(label))) {
+      return { value: auth.authorized, source: `${authSrc}: authorized` };
+    }
+    if (auth && isSponsor && auth.sponsorship) return { value: auth.sponsorship, source: `${authSrc}: sponsorship` };
+    if (auth && isAuth && auth.authorized) return { value: auth.authorized, source: `${authSrc}: authorized` };
+
     const rules = [
-      [Q.sponsorshipNeed, auth && auth.sponsorship, authSrc],
-      [Q.authorized, auth && auth.authorized, authSrc],
-      [Q.sponsorship, auth && auth.sponsorship, authSrc],
       [Q.relocate, wa.willingToRelocate, 'willing to relocate'],
       [Q.previouslyWorked, profile.application.previouslyWorkedHere, 'previously worked here'],
       [Q.howDidYouHear, profile.application.howDidYouHear, 'how did you hear'],
@@ -72,7 +80,7 @@
         continue;
       }
       WDA.log(`question "${name}" → ${ans.source}`);
-      await ctx.fillTarget(name, target, ans.value);
+      await ctx.fillTarget(name, target, ans.value, { source: ans.source });
     }
   };
 

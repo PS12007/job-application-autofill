@@ -41,6 +41,8 @@
     listbox: {
       root: '[role="listbox"]',
       option: '[role="option"]',
+      /** Chosen-value pills are also role=listbox — never treat them as a dropdown's list. */
+      exclude: '[data-automation-id="selectedItemList"], [data-automation-id="selectedItem"]',
     },
 
     /** Searchable / multiselect "prompt" widgets. */
@@ -318,9 +320,10 @@
 
     /** Built-in answers for Application Questions (saved answers always win). */
     questionPatterns: {
-      sponsorshipNeed: /(require|need)\w*\b.*sponsor|sponsor\w*.*(require|need)/i,
       sponsorship: /sponsor/i,
-      authorized: /(authori[sz]ed|eligible|permitted|entitled)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work/i,
+      withoutSponsorship: /without\b.{0,40}sponsor/i,
+      authorized:
+        /(authori[sz]ed|eligible|permitted|entitled|allowed|legally able)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|work\s+permit/i,
       relocate: /relocat/i,
       previouslyWorked: /previously (worked|been employed)|former (employee|worker)|worked (here|for us) before/i,
       howDidYouHear: /how did you hear/i,
@@ -328,6 +331,28 @@
       github: /github/i,
       portfolio: /portfolio|personal website/i,
     },
+
+    /**
+     * Synonym groups for dropdown/prompt matching. If your value equals any entry, the
+     * other entries are tried too (in this order) after your own "|" alternatives.
+     * Generic names come first so a specific-but-wrong degree isn't picked early.
+     */
+    synonyms: [
+      [
+        "Bachelor's Degree", 'Bachelors Degree', 'Bachelors', "Bachelor's", 'Undergraduate Degree',
+        'Bachelor of Engineering', 'BEng', 'B.Eng', 'Bachelor of Applied Science', 'BASc', 'B.A.Sc',
+        'Bachelor of Science', 'BS', 'B.S.', 'BSc', 'B.Sc', 'BSE',
+      ],
+      [
+        "Master's Degree", 'Masters Degree', 'Masters', "Master's",
+        'Master of Engineering', 'MEng', 'M.Eng', 'Master of Applied Science', 'MASc',
+        'Master of Science', 'MS', 'M.S.', 'MSc', 'M.Sc',
+      ],
+      ['Doctorate', 'Doctoral Degree', 'PhD', 'Ph.D.', 'Doctor of Philosophy'],
+      ["Associate's Degree", 'Associates Degree', 'Associate Degree', 'Associates', 'College Diploma'],
+      ['High School Diploma', 'High School', 'Secondary School', 'GED'],
+      ['Mobile', 'Cell', 'Cell Phone', 'Mobile Phone', 'Cellular'],
+    ],
 
     /** Extra names used to spot a country inside a question's text. */
     countryAliases: {

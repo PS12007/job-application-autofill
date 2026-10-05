@@ -63,4 +63,5 @@ button.primary:hover:not(:disabled) { opacity: 0.9; background: var(--accent); }
 .details li::before { content: "●"; margin-right: 6px; }
 .details li.failed::before { color: var(--err); }
 .details li.skipped::before { color: var(--warn); }
+.details li.filled::before { color: var(--ok); }
 .dump { width: 100%; height: 120px; margin-top: 8px; font: 11px ui-monospace, Consolas, monospace; background: var(--btn); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }

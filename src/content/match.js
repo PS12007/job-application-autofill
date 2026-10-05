@@ -59,12 +59,33 @@
     return null;
   }
 
+  /**
+   * "a|b" → ['a', 'b'], plus any built-in synonyms (selectors.js → synonyms) of each
+   * alternative, appended after the user's own alternatives.
+   */
+  WDA.expandAlternatives = (value) => {
+    const own = String(value ?? '').split('|').map((s) => s.trim()).filter(Boolean);
+    const out = [...own];
+    const seen = new Set(own.map(WDA.norm));
+    for (const alt of own) {
+      const n = WDA.norm(alt);
+      const group = (WDA.SELECTORS.synonyms || []).find((g) => g.some((s) => WDA.norm(s) === n));
+      for (const s of group || []) {
+        if (!seen.has(WDA.norm(s))) {
+          seen.add(WDA.norm(s));
+          out.push(s);
+        }
+      }
+    }
+    return out;
+  };
+
   /** Pick the item whose text best matches value, or null. */
   WDA.bestMatch = (items, value, getText = (x) => (typeof x === 'string' ? x : x.text)) => {
     if (value === true) value = 'Yes';
     if (value === false) value = 'No';
     if (value == null) return null;
-    const alts = value === '__decline__' ? [value] : String(value).split('|').map((s) => s.trim()).filter(Boolean);
+    const alts = value === '__decline__' ? [value] : WDA.expandAlternatives(value);
     for (const alt of alts) {
       const m = matchOne(items, alt, getText);
       if (m) return m;

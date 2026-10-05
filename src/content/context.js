@@ -71,6 +71,7 @@
           res = { status: 'failed', reason: e.message || String(e) };
           WDA.closePopups();
         }
+        if (opts.source) res = { ...res, reason: [res.reason, `from ${opts.source}`].filter(Boolean).join(' · ') };
         ctx.record(name, target, res);
         await WDA.sleep(settings.fieldDelay);
         return res;

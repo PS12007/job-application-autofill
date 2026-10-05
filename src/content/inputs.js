@@ -39,24 +39,35 @@
     }
   }
 
-  /** Find a field by its spec within scope. Returns a target or null. */
+  /**
+   * Find a field by its spec within scope. Returns a target or null. A match with no
+   * fillable control (e.g. read-only text) is only returned if nothing better is found.
+   */
   WDA.resolve = (spec, scope = document) => {
     if (!spec || !scope) return null;
+    let readOnly = null;
+    const consider = (el, via) => {
+      if (!el) return null;
+      const t = WDA.buildTarget(el, via);
+      if (t.kind !== 'unknown') return t;
+      readOnly = readOnly || t;
+      return null;
+    };
     for (const id of spec.ids || []) {
       for (const sel of idSelectors(id)) {
-        const el = firstVisible(scope, sel);
-        if (el) return WDA.buildTarget(el, `id "${id}"`);
+        const t = consider(firstVisible(scope, sel), `id "${id}"`);
+        if (t) return t;
       }
     }
     if (spec.labels && spec.labels.length) {
-      const el = findByLabel(spec.labels, scope, spec.exclude);
-      if (el) return WDA.buildTarget(el, 'label');
+      const t = consider(findByLabel(spec.labels, scope, spec.exclude), 'label');
+      if (t) return t;
     }
     for (const sel of spec.selectors || []) {
-      const el = firstVisible(scope, sel);
-      if (el) return WDA.buildTarget(el, `selector ${sel}`);
+      const t = consider(firstVisible(scope, sel), `selector ${sel}`);
+      if (t) return t;
     }
-    return null;
+    return readOnly;
   };
 
   function findByLabel(patterns, scope, exclude = []) {
@@ -199,7 +210,7 @@
       case 'file':
         return fillFile(t, value, ctx);
       default:
-        return fail('unsupported field type');
+        return skip('not an editable field on this page (probably read-only)');
     }
   };
 
@@ -213,6 +224,7 @@
     const cur = (el.value || '').trim();
     const same = (a) => a.trim() === want.trim() || (/\d/.test(want) && a.replace(/\D/g, '') === want.replace(/\D/g, '') && /^[\d\s()+.\-]+$/.test(want));
     if (same(cur)) return ok('already set');
+    if (el.readOnly || el.disabled) return skip('field is read-only');
     if (cur && !ctx.settings.overwrite) return skip(`has existing value "${WDA.shortLabel(cur, 30)}"`);
 
     WDA.setText(el, want);
@@ -230,16 +242,37 @@
    * Button dropdown → listbox popup
    * ======================================================================= */
 
+  /**
+   * Popup listboxes only. Workday also renders the chosen-value "pills" of prompts as
+   * role=listbox inside the field — those must never be mistaken for a dropdown's list.
+   */
+  const isPopupListbox = (l) => !l.closest(S().listbox.exclude) && !l.querySelector(S().listbox.exclude);
   const visibleListboxes = () =>
-    [...document.querySelectorAll(S().listbox.root)].filter((l) => WDA.isVisible(l) && l.querySelector(S().listbox.option));
+    [...document.querySelectorAll(S().listbox.root)].filter(
+      (l) => isPopupListbox(l) && WDA.isVisible(l) && l.querySelector(S().listbox.option)
+    );
 
+  /** Open the dropdown and return the listbox that belongs to it (never a stale one). */
   async function openListbox(btn) {
+    if (visibleListboxes().length) {
+      closePopups();
+      await WDA.waitFor(() => !visibleListboxes().length, { timeout: 1500 });
+    }
+    const stale = new Set(visibleListboxes());
+    const fresh = () => {
+      const id = btn.getAttribute('aria-controls') || btn.getAttribute('aria-owns');
+      const owned = id && document.getElementById(id);
+      if (owned && WDA.isVisible(owned) && owned.querySelector(S().listbox.option)) {
+        return owned.matches(S().listbox.root) ? owned : owned.querySelector(S().listbox.root) || owned;
+      }
+      return visibleListboxes().filter((l) => !stale.has(l)).pop();
+    };
     WDA.safeClick(btn);
-    let lb = await WDA.waitFor(() => visibleListboxes().pop(), { timeout: 2500 });
+    let lb = await WDA.waitFor(fresh, { timeout: 2500 });
     if (!lb) {
       WDA.log('listbox did not open on click(), trying mouse sequence');
       WDA.safeMouse(btn);
-      lb = await WDA.waitFor(() => visibleListboxes().pop(), { timeout: 2500 });
+      lb = await WDA.waitFor(fresh, { timeout: 2500 });
     }
     return lb;
   }
@@ -269,8 +302,11 @@
     return null;
   }
 
+  const openPromptPopups = () =>
+    [...document.querySelectorAll(S().prompt.popup)].filter((p) => isPopupListbox(p) && WDA.isVisible(p));
+
   function closePopups() {
-    if (visibleListboxes().length || document.querySelector(S().prompt.popup)) {
+    if (visibleListboxes().length || openPromptPopups().length) {
       WDA.pressKey(document.activeElement || document.body, 'Escape');
     }
   }
@@ -314,16 +350,15 @@
 
   function promptOptions() {
     const P = S().prompt;
-    let opts = [...document.querySelectorAll(P.option)].filter(WDA.isVisible);
-    if (!opts.length) opts = [...document.querySelectorAll(P.fallbackOption)].filter(WDA.isVisible);
+    const usable = (o) => WDA.isVisible(o) && isPopupListbox(o);
+    let opts = [...document.querySelectorAll(P.option)].filter(usable);
+    if (!opts.length) opts = [...document.querySelectorAll(P.fallbackOption)].filter(usable);
     return opts;
   }
   const optText = (o) => WDA.clean(o.getAttribute('data-automation-label') || o.innerText);
 
   function noItemsShown() {
-    return [...document.querySelectorAll(S().prompt.popup)].some(
-      (p) => WDA.isVisible(p) && S().prompt.noItems.test(p.innerText || '')
-    );
+    return openPromptPopups().some((p) => S().prompt.noItems.test(p.innerText || ''));
   }
 
   function isSelected(box, label) {
@@ -337,22 +372,23 @@
     return input.isConnected ? input : box.querySelector(S().controls.promptInput) || input;
   }
 
-  /** Type a term, press Enter, wait for results, click the best match (follows sub-menus up to 3 levels). */
-  async function searchPrompt(input, box, term) {
+  /**
+   * Type a term, press Enter, wait for results, click the option chosen by pick()
+   * (default: best match for the term). Follows sub-menus up to 3 levels.
+   * Returns the selected option's label, or null.
+   */
+  async function searchPrompt(input, box, term, pick = (opts) => WDA.bestMatch(opts, term, optText)) {
     input = liveInput(input, box);
     WDA.safeClick(input);
-    input.focus();
+    WDA.focusEl(input);
     WDA.setNativeValue(input, term);
     WDA.pressKey(input, 'Enter');
 
     for (let level = 0; level < 3; level++) {
-      const hit = await WDA.waitFor(
-        () => WDA.bestMatch(promptOptions(), term, optText) || (noItemsShown() ? 'none' : null),
-        { timeout: 4000 }
-      );
+      const hit = await WDA.waitFor(() => pick(promptOptions()) || (noItemsShown() ? 'none' : null), { timeout: 4000 });
       if (!hit || hit === 'none') {
-        WDA.log(`prompt: no result for "${term}"`);
-        return false;
+        WDA.log(`prompt: no usable result for "${term}"`, promptOptions().map(optText));
+        return null;
       }
       const label = optText(hit);
       const before = promptOptions().map(optText).join('|');
@@ -361,16 +397,16 @@
         () => (isSelected(box, label) ? 'selected' : promptOptions().map(optText).join('|') !== before ? 'changed' : null),
         { timeout: 2500 }
       );
-      if (res === 'selected') return true;
+      if (res === 'selected') return label;
       if (res === 'changed' && promptOptions().length) continue; // opened a sub-menu; match again
       // click didn't register: try the inner radio/checkbox or a full mouse sequence
       if (hit.isConnected) {
         WDA.safeMouse(hit.querySelector('input[type="radio"], input[type="checkbox"]') || hit);
-        if (await WDA.waitFor(() => isSelected(box, label), { timeout: 2000 })) return true;
+        if (await WDA.waitFor(() => isSelected(box, label), { timeout: 2000 })) return label;
       }
-      return false;
+      return null;
     }
-    return false;
+    return null;
   }
 
   /** "Category > Sub > Option": open the list and click through each level. */
@@ -386,21 +422,44 @@
       const label = optText(hit);
       const before = promptOptions().map(optText).join('|');
       WDA.safeClick(hit);
-      if (i === path.length - 1) return !!(await WDA.waitFor(() => isSelected(box, label), { timeout: 2500 }));
+      if (i === path.length - 1) return (await WDA.waitFor(() => isSelected(box, label), { timeout: 2500 })) ? label : null;
       await WDA.waitFor(() => promptOptions().map(optText).join('|') !== before, { timeout: 3000 });
     }
-    return false;
+    return null;
   }
 
+  const STOPWORDS = new Set(['and', 'of', 'the', 'in', 'for', 'with', 'engineering', 'science', 'sciences', 'studies', 'technology', 'general']);
+
+  /**
+   * Returns the selected label or null. Tries: each "|" alternative (plus built-in
+   * synonyms), then — if nothing matched — searches the value's most distinctive word
+   * ("Mechatronics") and takes the closest result containing it.
+   */
   async function selectInPrompt(input, box, value) {
     const path = String(value).split('>').map((s) => s.trim()).filter(Boolean);
     if (path.length > 1) return browsePromptPath(input, box, path);
-    for (const term of String(value).split('|').map((s) => s.trim()).filter(Boolean)) {
-      if (await searchPrompt(input, box, term)) return true;
+    const clearSearch = () => {
       const live = liveInput(input, box);
-      if (live.value) WDA.setNativeValue(live, ''); // clear the failed search
+      if (live.value) WDA.setNativeValue(live, '');
+    };
+    const alts = WDA.expandAlternatives(value);
+    for (const term of alts) {
+      const label = await searchPrompt(input, box, term);
+      if (label) return label;
+      clearSearch();
     }
-    return false;
+    // Closest-match fallback on the first alternative's most distinctive word
+    const words = WDA.norm(alts[0] || '').split(' ').filter((w) => w.length >= 4 && !STOPWORDS.has(w));
+    const key = words.sort((a, b) => b.length - a.length)[0];
+    if (key && key !== WDA.norm(alts[0])) {
+      WDA.log(`prompt: no exact result for "${alts[0]}", trying closest match on "${key}"`);
+      const pick = (opts) =>
+        WDA.bestMatch(opts, value, optText) || opts.filter((o) => ` ${WDA.norm(optText(o))} `.includes(` ${key} `)).sort((a, b) => optText(a).length - optText(b).length)[0];
+      const label = await searchPrompt(input, box, key, pick);
+      if (label) return label;
+      clearSearch();
+    }
+    return null;
   }
 
   async function clearPromptSelection(box) {
@@ -424,24 +483,31 @@
 
     const added = [];
     const missing = [];
+    const substituted = []; // "wanted → picked" when the closest match differs
     try {
       for (const v of values) {
         if (multi && existing.some((s) => WDA.bestMatch([s], v))) {
           added.push(v);
           continue;
         }
-        (await selectInPrompt(t.control, box, v)) ? added.push(v) : missing.push(v);
+        const label = await selectInPrompt(t.control, box, v);
+        if (label) {
+          added.push(v);
+          const exact = WDA.expandAlternatives(v).some((a) => WDA.norm(a) === WDA.norm(label));
+          if (!exact) substituted.push(`${WDA.firstAlt(v)} → ${label}`);
+        } else missing.push(v);
         existing = selectedTexts(box);
         await WDA.sleep(ctx.settings.fieldDelay);
       }
     } finally {
       closePopups();
       const live = liveInput(t.control, box);
-      if (live && document.activeElement === live) live.blur();
+      if (live) WDA.blurEl(live);
     }
 
-    if (!missing.length) return ok(multi ? `${added.length} selected` : '');
-    if (!multi) return fail(`no search result matches "${values[0]}"`);
+    const subNote = substituted.length ? `closest match used: ${substituted.join('; ')}` : '';
+    if (!missing.length) return ok(subNote || (multi ? `${added.length} selected` : ''));
+    if (!multi) return fail(`no search result matches "${WDA.firstAlt(values[0])}" — add alternatives with | (e.g. "…|Other")`);
     return skip(`${added.length} added; no match for: ${missing.join(', ')}`);
   }
 
@@ -512,7 +578,7 @@
     } catch (_) {
       /* focus below is enough */
     }
-    el.focus();
+    WDA.focusEl(el);
     WDA.setNativeValue(el, val);
     if (!sameNum(el.value, val)) WDA.typeText(el, val);
     WDA.blurEl(el);

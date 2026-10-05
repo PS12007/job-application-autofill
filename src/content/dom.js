@@ -173,21 +173,34 @@
     el.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
+  /*
+   * Focus/blur are dispatched explicitly: while the extension popup is open the page
+   * window isn't focused, so el.focus()/el.blur() fire NO events and Workday (which
+   * commits a field's value on blur) never registers the change. React listens to
+   * focusin/focusout, so those are the important ones.
+   */
+  WDA.focusEl = (el) => {
+    el.focus();
+    el.dispatchEvent(new FocusEvent('focus'));
+    el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+  };
+
   WDA.blurEl = (el) => {
-    el.dispatchEvent(new Event('blur', { bubbles: true }));
+    el.dispatchEvent(new FocusEvent('blur'));
+    el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
     el.blur();
   };
 
   /** Focus, set value (native setter + input/change), then blur. */
   WDA.setText = (el, value, { blur = true } = {}) => {
-    el.focus();
+    WDA.focusEl(el);
     WDA.setNativeValue(el, value);
     if (blur) WDA.blurEl(el);
   };
 
   /** Fallback typing via execCommand — produces real input events React always accepts. */
   WDA.typeText = (el, value) => {
-    el.focus();
+    WDA.focusEl(el);
     if (typeof el.select === 'function') el.select();
     if (value === '') document.execCommand('delete');
     else document.execCommand('insertText', false, value);
