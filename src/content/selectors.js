@@ -104,6 +104,14 @@
       blockedText:
         /^(next|back|submit|submit application|save and continue|save & continue|continue|apply|apply now|apply manually|sign in|create account|review|finish)$/i,
       blockedZones: '[data-automation-id="pageFooter"], [data-automation-id="bottom-navigation"]',
+
+      // ---- Auto-advance only (opt-in toggle). Used by autoAdvance.js, nowhere else. ----
+      nextIds: ['bottom-navigation-next-button', 'pageFooterNextButton', 'bottom-navigation-save-continue', 'wd-CommandButton_next'],
+      nextText: /^(next|save and continue|save & continue|continue)$/i,
+      /** Auto-advance never clicks a button whose text matches this. */
+      neverText: /submit/i,
+      /** Workday validation messages shown after clicking Next. */
+      errors: '[data-automation-id="errorMessage"], [data-automation-id="inputAlert"], [data-automation-id="errorBanner"], [role="alert"]',
     },
 
     /** "Add" / "Add Another" buttons in repeatable sections. */

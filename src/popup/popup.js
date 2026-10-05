@@ -24,6 +24,7 @@
     setStatus(
       `Filled <b>${r.filled}</b> · Skipped <b>${r.skipped}</b> · ` +
         `<span class="${r.failed ? 'err' : ''}">Failed <b>${r.failed}</b></span>` +
+        (r.step && r.step.includes(' → ') ? `<div class="note">${esc(r.step)}</div>` : '') +
         (r.note ? `<div class="note">${esc(r.note)}</div>` : '')
     );
     const items = (r.details || []).filter((d) => d.status !== 'filled' || / from /.test(' ' + d.reason));
@@ -52,6 +53,7 @@
     const settings = await WDA.storage.getSettings();
     $('overwrite').checked = settings.overwrite;
     $('debug').checked = settings.debug;
+    $('autoAdvance').checked = settings.autoAdvance;
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !WORKDAY_URL.test(tab.url || '')) {
@@ -79,7 +81,7 @@
     try {
       const r = await chrome.tabs.sendMessage(tabId, { type: 'WDA_FILL' });
       showResult(r);
-      if (r && r.step) $('step').textContent = r.step;
+      if (r && r.step) $('step').textContent = r.step.split(' → ').pop();
     } catch (e) {
       setStatus(`<span class="err">${esc(e.message)}</span>`);
     } finally {
@@ -109,6 +111,7 @@
   $('settings').addEventListener('click', () => chrome.runtime.openOptionsPage());
   $('overwrite').addEventListener('change', (e) => WDA.storage.saveSettings({ overwrite: e.target.checked }));
   $('debug').addEventListener('change', (e) => WDA.storage.saveSettings({ debug: e.target.checked }));
+  $('autoAdvance').addEventListener('change', (e) => WDA.storage.saveSettings({ autoAdvance: e.target.checked }));
 
   init();
 })();

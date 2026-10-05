@@ -67,6 +67,7 @@
   WDA.defaultSettings = () => ({
     overwrite: false, // overwrite fields that already have a value
     debug: false, // console logging with the [WD-Autofill] prefix
+    autoAdvance: false, // opt-in: click Next after a clean step; never clicks Submit
     showFloatingButton: true,
     fieldDelay: 150, // ms pause between fields so Workday can re-render
     fieldTimeoutMs: 60000, // max ms for a single field (search fields may try several names)

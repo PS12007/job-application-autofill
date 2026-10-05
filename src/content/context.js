@@ -27,7 +27,11 @@
       note: '',
 
       /** Record a result for a target (or for no element, e.g. "could not add a block"). */
-      record(name, target, res) {
+      record(name, target, res, { replace = false } = {}) {
+        if (replace) {
+          const i = details.findIndex((d) => d.field === name);
+          if (i >= 0) tally[details.splice(i, 1)[0].status]--;
+        }
         tally[res.status] = (tally[res.status] || 0) + 1;
         details.push({ field: name, status: res.status, reason: res.reason || '' });
         if (target) WDA.mark(target.container || target.el, res.status, `${name}: ${res.reason || res.status}`);

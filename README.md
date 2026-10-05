@@ -2,7 +2,7 @@
 
 A Chrome extension (Manifest V3, plain JavaScript, no build step) that fills the current step of a Workday job application from a profile stored in your browser.
 
-- It **never** clicks Next, Save and Continue, or Submit, never creates accounts, and never touches CAPTCHAs. Every click passes through a guard (`WDA.assertClickable` in `src/content/dom.js`) that refuses navigation and sign-in buttons. The list it checks is `nav` in `src/content/selectors.js`.
+- It **never** clicks Submit, never creates accounts, and never touches CAPTCHAs. By default it doesn't click Next either: every fill click passes through a guard (`WDA.assertClickable` in `src/content/dom.js`) that refuses navigation and sign-in buttons. The only exception is the opt-in **Auto-advance** toggle (see below), whose single navigation click lives in `src/content/autoAdvance.js`.
 - All data stays in `chrome.storage.local`. The extension makes no network requests and has no analytics.
 - Permissions: `storage`, `activeTab`, `scripting`, plus host access to `*.myworkdayjobs.com`, `*.myworkday.com` and `*.myworkdaysite.com` only.
 
@@ -41,6 +41,11 @@ Right-click the extension icon and choose **Options**, or use **Profile settings
    - 🟨 yellow: skipped (no data in your profile, already had a different value, or no saved answer). Hover for the reason.
    - 🟥 red: failed. The popup lists every skipped and failed field with a reason.
 4. Fix anything by hand, then click Next or Submit **yourself**.
+
+**Auto-advance through steps** (popup toggle, off by default): fill once and it keeps going. After each step it clicks Next / Save and Continue, waits for the next step and fills that too. It stops and tells you why when:
+- it reaches **Review**, where you check everything and click Submit yourself (it never clicks a button containing "Submit")
+- any field **failed**, or a **required field is still empty** (shown in red, for example an unanswered question or the consent checkbox). Fix it and press Fill again to continue from that step.
+- Workday shows validation errors after Next, the page doesn't change, or the step is unknown
 
 **Overwrite existing values** (popup toggle): off by default, so values Workday pre-filled from your resume are left alone. Turn it on to replace them.
 
