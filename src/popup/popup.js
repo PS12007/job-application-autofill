@@ -4,9 +4,10 @@
 (() => {
   const WDA = globalThis.WDA;
   const $ = (id) => document.getElementById(id);
-  const WORKDAY_URL = /^https:\/\/([^/]+\.)?(myworkdayjobs|myworkday|myworkdaysite)\.com\//i;
+  const SUPPORTED_URL = /^https:\/\/([^/]+\.)?((myworkdayjobs|myworkday|myworkdaysite)\.com|greenhouse\.io)\//i;
 
   let tabId = null;
+  let injectable = false; // the tab itself is a Workday/Greenhouse URL (so we may inject)
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -43,6 +44,7 @@
     } catch (_) {
       /* not injected yet */
     }
+    if (!injectable) throw new Error('no application form found');
     const cs = chrome.runtime.getManifest().content_scripts[0];
     await chrome.scripting.insertCSS({ target: { tabId }, files: cs.css });
     await chrome.scripting.executeScript({ target: { tabId }, files: cs.js });
@@ -56,13 +58,14 @@
     $('autoAdvance').checked = settings.autoAdvance;
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !WORKDAY_URL.test(tab.url || '')) {
-      setStatus('Open a Workday application page to use this.');
-      return;
-    }
+    if (!tab) return setStatus('No active tab.');
     tabId = tab.id;
+    // tab.url is only visible on supported sites. Elsewhere an embedded Greenhouse form
+    // (iframe) may still be there, and its content script answers the ping.
+    injectable = SUPPORTED_URL.test(tab.url || '');
     try {
       const r = await ensureContent();
+      if (!r || !r.ok) throw new Error('no response from the page');
       $('step').textContent = r.step ? r.step.label : '—';
       $('fill').disabled = false;
       $('dump').disabled = false;
@@ -70,7 +73,11 @@
       else if (r.last) showResult(r.last);
       else setStatus('Ready.');
     } catch (e) {
-      setStatus(`<span class="err">Could not reach the page: ${esc(e.message)}. Try reloading the tab.</span>`);
+      setStatus(
+        injectable
+          ? `<span class="err">Could not reach the page: ${esc(e.message)}. Try reloading the tab.</span>`
+          : 'Open a Workday or Greenhouse application to use this. If the form is embedded in a company site, reload the page.'
+      );
     }
   }
 

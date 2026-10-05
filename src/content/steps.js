@@ -6,6 +6,7 @@
   const WDA = (globalThis.WDA = globalThis.WDA || {});
 
   WDA.detectStep = () => {
+    if (WDA.site === 'greenhouse') return { key: 'greenhouse', label: 'Greenhouse application', source: location.hostname };
     const S = WDA.SELECTORS;
     const sources = [];
     for (const sel of S.stepIndicators) {

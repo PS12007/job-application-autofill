@@ -79,7 +79,12 @@
   }
   WDA.runFill = runFill;
 
+  /** Embedded Greenhouse forms live in iframes: only answer from the frame with the form. */
+  const shouldAnswer = () =>
+    window === window.top || document.querySelectorAll('input:not([type="hidden"]), select, textarea').length >= 3;
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (!shouldAnswer()) return false;
     switch (msg && msg.type) {
       case 'WDA_PING':
         sendResponse({ ok: true, step: WDA.detectStep(), running, last: lastResult });
@@ -104,5 +109,5 @@
     if (area === 'local' && changes.settings) WDA.settings = { ...WDA.defaultSettings(), ...(changes.settings.newValue || {}) };
   });
 
-  WDA.initFloatingButton();
+  if (shouldAnswer()) WDA.initFloatingButton();
 })();

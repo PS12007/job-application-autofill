@@ -108,9 +108,14 @@
     };
   };
 
+  /** Greenhouse uses react-select: a role=combobox <input> (Workday's are "prompts"). */
+  const isReactSelectInput = (el) => WDA.site === 'greenhouse' && el.matches('input[role="combobox"]');
+
   function classify(el, container) {
     const C = S().controls;
     if (el.matches(C.fileInput)) return { kind: 'file', control: el };
+    if (el.matches('select')) return { kind: 'select', control: el };
+    if (isReactSelectInput(el)) return { kind: 'combobox', control: el };
     if (el.matches(C.dateAny)) {
       const root = container !== el ? container : el.parentElement?.parentElement?.parentElement || el;
       return { kind: 'date', control: root };
@@ -131,6 +136,8 @@
     const q = (s) => box.querySelector(s);
     let c;
     if ((c = q(C.fileInput))) return { kind: 'file', control: c };
+    if ((c = q('select'))) return { kind: 'select', control: c };
+    if (WDA.site === 'greenhouse' && (c = q('input[role="combobox"]'))) return { kind: 'combobox', control: c };
     if (q(C.dateAny)) return { kind: 'date', control: box };
     if ((c = q(C.dropdownButton))) return { kind: 'dropdown', control: c };
     if ((c = q(C.promptInput))) return { kind: 'prompt', control: c };
@@ -183,7 +190,16 @@
       case 'date':
         return [...t.control.querySelectorAll(`${C.dateAny}, input`)].some((i) => (i.value || '').trim() && !/^(mm|dd|yyyy)$/i.test(i.value));
       case 'file':
-        return !!(t.container && t.container.querySelector(S().upload.uploaded));
+        return (
+          !!(t.control.files && t.control.files.length) ||
+          !!(t.container && t.container.querySelector(`${S().upload.uploaded}, ${WDA.GH.uploaded}`))
+        );
+      case 'select': {
+        const o = t.control.selectedOptions && t.control.selectedOptions[0];
+        return !!(o && o.value !== '' && !WDA.isPlaceholder(o.text));
+      }
+      case 'combobox':
+        return WDA.comboValues(t.container).length > 0;
       default:
         return false;
     }
@@ -209,6 +225,10 @@
         return fillDate(t, value, ctx);
       case 'file':
         return fillFile(t, value, ctx);
+      case 'select':
+        return fillSelect(t, value, ctx);
+      case 'combobox':
+        return WDA.fillCombobox(t, value, ctx);
       default:
         return skip('not an editable field on this page (probably read-only)');
     }
@@ -236,6 +256,31 @@
       await WDA.sleep(30);
     }
     return same(el.value || '') ? ok() : fail(`value didn't stick (field shows "${WDA.shortLabel(el.value || '', 30)}")`);
+  }
+
+  /* =========================================================================
+   * Native <select> (legacy Greenhouse; select2 listens to the native change event)
+   * ======================================================================= */
+
+  async function fillSelect(t, value, ctx) {
+    const sel = t.control;
+    if (typeof value === 'string' && value.includes('>')) value = value.split('>').pop().trim();
+    const options = [...sel.options].filter((o) => o.value !== '' && !WDA.isPlaceholder(o.text));
+    const cur = sel.selectedOptions && sel.selectedOptions[0];
+    const hasCur = cur && cur.value !== '' && !WDA.isPlaceholder(cur.text);
+    const want = WDA.bestMatch(options, value, (o) => o.text);
+    if (!want) return fail(`no option matches "${show(value)}" (options: ${options.slice(0, 8).map((o) => o.text.trim()).join(' / ')})`);
+    if (hasCur && cur === want) return ok('already set');
+    if (hasCur && !ctx.settings.overwrite) return skip(`has value "${cur.text.trim()}"`);
+    if (sel.disabled) return skip('field is disabled');
+
+    WDA.focusEl(sel);
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+    setter.call(sel, want.value);
+    sel.dispatchEvent(new Event('input', { bubbles: true }));
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    WDA.blurEl(sel);
+    return sel.value === want.value ? ok(want.text.trim()) : fail(`selected "${want.text.trim()}" but it did not stick`);
   }
 
   /* =========================================================================
@@ -472,6 +517,20 @@
   ]);
 
   /**
+   * Search terms for a value: its "|" alternatives + synonyms + institution name
+   * variants, and the most distinctive word for a closest-match fallback (or null).
+   */
+  WDA.searchPlan = (value) => {
+    const alts = WDA.expandAlternatives(value);
+    for (const a of [...alts]) {
+      for (const v of nameVariants(a)) if (!alts.some((x) => WDA.norm(x) === WDA.norm(v))) alts.push(v);
+    }
+    const words = WDA.norm(alts[0] || '').split(' ').filter((w) => w.length >= 4 && !STOPWORDS.has(w));
+    const key = words.sort((a, b) => b.length - a.length)[0] || null;
+    return { alts, key: key && key !== WDA.norm(alts[0]) ? key : null };
+  };
+
+  /**
    * Returns the selected label or null. Tries: each "|" alternative (plus built-in
    * synonyms), then — if nothing matched — searches the value's most distinctive word
    * ("Mechatronics") and takes the closest result containing it.
@@ -483,19 +542,14 @@
       const live = liveInput(input, box);
       if (live.value) WDA.setNativeValue(live, '');
     };
-    const alts = WDA.expandAlternatives(value);
-    for (const a of [...alts]) {
-      for (const v of nameVariants(a)) if (!alts.some((x) => WDA.norm(x) === WDA.norm(v))) alts.push(v);
-    }
+    const { alts, key } = WDA.searchPlan(value);
     for (const term of alts) {
       const label = await searchPrompt(input, box, term);
       if (label) return label;
       clearSearch();
     }
     // Closest-match fallback on the first alternative's most distinctive word
-    const words = WDA.norm(alts[0] || '').split(' ').filter((w) => w.length >= 4 && !STOPWORDS.has(w));
-    const key = words.sort((a, b) => b.length - a.length)[0];
-    if (key && key !== WDA.norm(alts[0])) {
+    if (key) {
       WDA.log(`prompt: no exact result for "${alts[0]}", trying closest match on "${key}"`);
       const pick = (opts) =>
         WDA.bestMatch(opts, value, optText) || opts.filter((o) => ` ${WDA.norm(optText(o))} `.includes(` ${key} `)).sort((a, b) => optText(a).length - optText(b).length)[0];

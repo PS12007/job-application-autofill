@@ -337,7 +337,7 @@
       howDidYouHear: /how did you hear/i,
       linkedin: /linkedin/i,
       github: /github/i,
-      portfolio: /portfolio|personal website/i,
+      portfolio: /portfolio|website|personal site/i,
     },
 
     /**

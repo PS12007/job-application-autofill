@@ -1,10 +1,10 @@
-# Workday Autofill (personal)
+# Job Application Autofill (personal)
 
-A Chrome extension (Manifest V3, plain JavaScript, no build step) that fills the current step of a Workday job application from a profile stored in your browser.
+A Chrome extension (Manifest V3, plain JavaScript, no build step) that fills **Workday** and **Greenhouse** job applications from a profile stored in your browser.
 
 - It **never** clicks Submit, never creates accounts, and never touches CAPTCHAs. By default it doesn't click Next either: every fill click passes through a guard (`WDA.assertClickable` in `src/content/dom.js`) that refuses navigation and sign-in buttons. The only exception is the opt-in **Auto-advance** toggle (see below), whose single navigation click lives in `src/content/autoAdvance.js`.
 - All data stays in `chrome.storage.local`. The extension makes no network requests and has no analytics.
-- Permissions: `storage`, `activeTab`, `scripting`, plus host access to `*.myworkdayjobs.com`, `*.myworkday.com` and `*.myworkdaysite.com` only.
+- Permissions: `storage`, `activeTab`, `scripting`, plus host access to `*.myworkdayjobs.com`, `*.myworkday.com`, `*.myworkdaysite.com` and `*.greenhouse.io` only.
 
 ## Install
 
@@ -62,6 +62,21 @@ Right-click the extension icon and choose **Options**, or use **Profile settings
 | Review | Nothing |
 | Unknown | Only saved answers |
 
+## Greenhouse
+
+Works on the new form (`job-boards.greenhouse.io`, with searchable dropdowns) and the legacy form (`boards.greenhouse.io`, with plain dropdowns). It also works when the Greenhouse form is embedded inside a company's careers page.
+
+A Greenhouse application is one page, so a single Fill covers everything:
+- name, email, phone country and number, location (picked from the autocomplete), resume
+- education and employment rows (it clicks "+ Add another" for extra rows), with months matched by name
+- LinkedIn, GitHub and website questions
+- gender, Hispanic/Latino, race, veteran and disability, following your disclosure settings
+- every other question, matched against your saved answers (unmatched ones turn yellow)
+
+It never clicks Submit. With Auto-advance on, it also marks any required field still empty in red.
+
+Greenhouse selectors are in `src/content/greenhouse/selectors.js`. The same **Dump fields** button works there too.
+
 ## Reporting problems with "Dump fields"
 
 Workday's markup varies between companies, so some selectors will need fixing.
@@ -84,7 +99,10 @@ sample-profile.json
 icons/
 src/shared/defaults.js      profile schema, defaults, normalisation
 src/shared/storage.js       chrome.storage.local wrapper
-src/content/selectors.js    ★ all automation ids, label patterns, step names, nav blocklist
+src/content/greenhouse/    ★ Greenhouse selectors + filler
+src/content/sites.js        Workday vs Greenhouse detection
+src/content/reactSelect.js  Greenhouse searchable dropdowns
+src/content/selectors.js    ★ all Workday automation ids, label patterns, step names, nav blocklist
 src/content/log.js          debug logger
 src/content/dom.js          waitFor, visibility, labels, React-safe setters, guarded clicks
 src/content/match.js        option matching, saved-answer matching

@@ -1,16 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Workday Autofill (Personal)",
-  "version": "0.1.0",
-  "description": "Fills Workday job application steps from a locally stored profile. Optional auto-advance; never clicks Submit.",
+  "name": "Job Application Autofill (Personal)",
+  "version": "0.2.0",
+  "description": "Fills Workday and Greenhouse job applications from a locally stored profile. Optional auto-advance; never clicks Submit.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
     "https://*.myworkdayjobs.com/*",
     "https://*.myworkday.com/*",
-    "https://*.myworkdaysite.com/*"
+    "https://*.myworkdaysite.com/*",
+    "https://*.greenhouse.io/*"
   ],
   "action": {
-    "default_title": "Workday Autofill",
+    "default_title": "Job Application Autofill",
     "default_popup": "src/popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -35,10 +36,13 @@
         "src/shared/defaults.js",
         "src/shared/storage.js",
         "src/content/selectors.js",
+        "src/content/greenhouse/selectors.js",
+        "src/content/sites.js",
         "src/content/log.js",
         "src/content/dom.js",
         "src/content/match.js",
         "src/content/inputs.js",
+        "src/content/reactSelect.js",
         "src/content/highlight.js",
         "src/content/context.js",
         "src/content/steps.js",
@@ -47,6 +51,7 @@
         "src/content/fillers/myExperience.js",
         "src/content/fillers/questions.js",
         "src/content/fillers/disclosures.js",
+        "src/content/greenhouse/filler.js",
         "src/content/autoAdvance.js",
         "src/content/dump.js",
         "src/content/floatingButton.js",
@@ -54,6 +59,37 @@
       ],
       "css": ["src/content/content.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.greenhouse.io/*"],
+      "js": [
+        "src/shared/defaults.js",
+        "src/shared/storage.js",
+        "src/content/selectors.js",
+        "src/content/greenhouse/selectors.js",
+        "src/content/sites.js",
+        "src/content/log.js",
+        "src/content/dom.js",
+        "src/content/match.js",
+        "src/content/inputs.js",
+        "src/content/reactSelect.js",
+        "src/content/highlight.js",
+        "src/content/context.js",
+        "src/content/steps.js",
+        "src/content/sections.js",
+        "src/content/fillers/myInformation.js",
+        "src/content/fillers/myExperience.js",
+        "src/content/fillers/questions.js",
+        "src/content/fillers/disclosures.js",
+        "src/content/greenhouse/filler.js",
+        "src/content/autoAdvance.js",
+        "src/content/dump.js",
+        "src/content/floatingButton.js",
+        "src/content/main.js"
+      ],
+      "css": ["src/content/content.css"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ]
 }

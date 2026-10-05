@@ -90,6 +90,7 @@
 
     const step = WDA.detectStep();
     const meta = {
+      site: WDA.site,
       page: location.hostname + location.pathname,
       step: step.label,
       stepSource: step.source,

@@ -43,6 +43,7 @@
       }
       return `Stopped on ${step.label}: ${empty.length} required field(s) need your input. Fill them, then press Fill again.`;
     }
+    if (step.key === 'greenhouse') return 'Greenhouse is a single page: review everything, then click Submit yourself.';
     return null;
   };
 
@@ -72,7 +73,7 @@
 
   /** Click Next and wait for the page to change. Returns { ok, reason }. */
   WDA.clickNextAndWait = async (step) => {
-    if (step.key === 'review') return { ok: false, reason: 'Reached Review: submit yourself.' };
+    if (step.key === 'review' || step.key === 'greenhouse') return { ok: false, reason: 'Review the page and submit yourself.' };
     const btn = findNextButton();
     if (!btn) return { ok: false, reason: `Stopped on ${step.label}: could not find the Next button.` };
     const text = WDA.clean(btn.innerText || btn.getAttribute('aria-label') || '');
