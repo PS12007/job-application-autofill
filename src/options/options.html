@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Workday Autofill — Profile</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="bar-inner">
+        <span class="title">Workday Autofill</span>
+        <span id="msg" class="msg"></span>
+        <div class="actions">
+          <button id="import">Import JSON</button>
+          <button id="export">Export JSON</button>
+          <button id="save" class="primary">Save</button>
+        </div>
+      </div>
+    </header>
+    <input type="file" id="importFile" accept=".json,application/json" hidden />
+
+    <main>
+      <p class="hint">
+        Stored only in this browser. For any dropdown value you can list alternatives with <code>|</code>
+        (e.g. <code>Bachelor's Degree|Bachelors</code>). For nested lists such as "How did you hear about us", use
+        <code>Category &gt; Option</code>.
+      </p>
+
+      <section>
+        <h2>Personal</h2>
+        <div class="grid">
+          <label>Legal first name<input data-k="personal.firstName" /></label>
+          <label>Legal last name<input data-k="personal.lastName" /></label>
+          <label>Preferred first name<input data-k="personal.preferredName" placeholder="optional" /></label>
+          <label>Email<input type="email" data-k="personal.email" /></label>
+          <label>Phone device type<input data-k="personal.phoneDeviceType" placeholder="Mobile" /></label>
+          <label>Phone country<input data-k="personal.phoneCountry" placeholder="Canada" /></label>
+          <label>Phone country code<input data-k="personal.phoneCode" placeholder="+1" /></label>
+          <label>Phone number<input data-k="personal.phoneNumber" placeholder="4165550100" /></label>
+          <label>Phone extension<input data-k="personal.phoneExtension" placeholder="optional" /></label>
+          <label class="wide">Address line 1<input data-k="personal.address1" /></label>
+          <label class="wide">Address line 2<input data-k="personal.address2" placeholder="optional" /></label>
+          <label>City<input data-k="personal.city" /></label>
+          <label>Province / state<input data-k="personal.state" placeholder="Ontario" /></label>
+          <label>Postal code<input data-k="personal.postalCode" /></label>
+          <label>Country<input data-k="personal.country" placeholder="Canada" /></label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Application</h2>
+        <div class="grid">
+          <label class="wide">How did you hear about us<input data-k="application.howDidYouHear" placeholder="LinkedIn  or  Job Board > LinkedIn" /></label>
+          <label>Previously worked for the company
+            <select data-k="application.previouslyWorkedHere"><option value=""></option><option>No</option><option>Yes</option></select>
+          </label>
+          <label>Willing to relocate
+            <select data-k="workAuth.willingToRelocate"><option value=""></option><option>Yes</option><option>No</option></select>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Work authorization</h2>
+        <p class="sub">The first row is used when a question doesn't name a country.</p>
+        <div data-list="authorizations"></div>
+        <button class="add" data-add="authorizations">+ Add country</button>
+      </section>
+
+      <section>
+        <h2>Work experience</h2>
+        <p class="sub">Order matters: rows fill Workday's blocks top to bottom.</p>
+        <div data-list="experience"></div>
+        <button class="add" data-add="experience">+ Add experience</button>
+      </section>
+
+      <section>
+        <h2>Education</h2>
+        <div data-list="education"></div>
+        <button class="add" data-add="education">+ Add education</button>
+      </section>
+
+      <section>
+        <h2>Skills</h2>
+        <label class="full">One per line or comma-separated<textarea data-k="skills" data-type="list" rows="3"></textarea></label>
+      </section>
+
+      <section>
+        <h2>Languages</h2>
+        <div data-list="languages"></div>
+        <button class="add" data-add="languages">+ Add language</button>
+      </section>
+
+      <section>
+        <h2>Links</h2>
+        <div class="grid">
+          <label>LinkedIn<input data-k="links.linkedin" placeholder="https://linkedin.com/in/…" /></label>
+          <label>GitHub<input data-k="links.github" placeholder="https://github.com/…" /></label>
+          <label>Portfolio / website<input data-k="links.portfolio" placeholder="https://…" /></label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Resume</h2>
+        <div class="resume">
+          <span id="resumeInfo" class="sub">No resume saved.</span>
+          <label class="filebtn">Choose PDF<input type="file" id="resumeFile" accept="application/pdf,.pdf" hidden /></label>
+          <button id="resumeRemove" class="link" hidden>Remove</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Voluntary disclosures</h2>
+        <p class="sub">"Decline" picks the "I don't wish to answer" option. "Leave blank" doesn't touch the field.</p>
+        <div class="disc" id="disclosures"></div>
+      </section>
+
+      <section>
+        <h2>Saved answers</h2>
+        <p class="sub">For custom questions. If any keyword appears in the question (case-insensitive), the answer is used. The most specific match wins.</p>
+        <div data-list="savedAnswers"></div>
+        <button class="add" data-add="savedAnswers">+ Add answer</button>
+      </section>
+
+      <section>
+        <h2>Extension</h2>
+        <label class="check"><input type="checkbox" data-s="showFloatingButton" /> Show the floating "Fill" button on Workday pages</label>
+      </section>
+    </main>
+
+    <script src="../shared/defaults.js"></script>
+    <script src="../shared/storage.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

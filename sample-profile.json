@@ -1,0 +1,96 @@
+{
+  "app": "workday-autofill",
+  "version": 1,
+  "profile": {
+    "personal": {
+      "firstName": "Alex",
+      "lastName": "Sample",
+      "preferredName": "",
+      "email": "alex.sample@example.com",
+      "phoneDeviceType": "Mobile",
+      "phoneCountry": "Canada",
+      "phoneCode": "+1",
+      "phoneNumber": "4165550100",
+      "phoneExtension": "",
+      "address1": "123 Example Street",
+      "address2": "Unit 4",
+      "city": "Toronto",
+      "state": "Ontario",
+      "postalCode": "M5V 1A1",
+      "country": "Canada"
+    },
+    "application": {
+      "howDidYouHear": "LinkedIn",
+      "previouslyWorkedHere": "No"
+    },
+    "workAuth": {
+      "authorizations": [
+        { "country": "Canada", "authorized": "Yes", "sponsorship": "No" },
+        { "country": "United States", "authorized": "No", "sponsorship": "Yes" }
+      ],
+      "willingToRelocate": "Yes"
+    },
+    "education": [
+      {
+        "school": "University of Example",
+        "degree": "Bachelor's Degree|Bachelors|Bachelor of Science",
+        "fieldOfStudy": "Computer Science",
+        "gpa": "3.7",
+        "startMonth": "9",
+        "startYear": "2021",
+        "endMonth": "4",
+        "endYear": "2025",
+        "expected": false
+      }
+    ],
+    "experience": [
+      {
+        "title": "Software Developer Intern",
+        "company": "Example Corp",
+        "location": "Toronto, ON",
+        "current": false,
+        "startMonth": "5",
+        "startYear": "2024",
+        "endMonth": "8",
+        "endYear": "2024",
+        "description": "Built internal tools in JavaScript and Python.\nImproved test coverage of the billing service."
+      },
+      {
+        "title": "Teaching Assistant",
+        "company": "University of Example",
+        "location": "Toronto, ON",
+        "current": true,
+        "startMonth": "1",
+        "startYear": "2025",
+        "endMonth": "",
+        "endYear": "",
+        "description": "Ran weekly labs for an intro programming course."
+      }
+    ],
+    "skills": ["JavaScript", "Python", "SQL", "Git", "React"],
+    "languages": [
+      { "language": "English", "proficiency": "Fluent|Native|Advanced", "fluent": true }
+    ],
+    "links": {
+      "linkedin": "https://www.linkedin.com/in/alex-sample",
+      "github": "https://github.com/alex-sample",
+      "portfolio": ""
+    },
+    "resume": null,
+    "disclosures": {
+      "gender": { "mode": "decline", "answer": "" },
+      "hispanicLatino": { "mode": "decline", "answer": "" },
+      "ethnicity": { "mode": "decline", "answer": "" },
+      "veteran": { "mode": "decline", "answer": "" },
+      "disability": { "mode": "decline", "answer": "" }
+    },
+    "savedAnswers": [
+      { "keywords": "require sponsorship, require visa, need sponsorship, need a visa", "answer": "No" },
+      { "keywords": "18 years", "answer": "Yes" },
+      { "keywords": "non-compete, non-solicitation", "answer": "No" },
+      { "keywords": "background check", "answer": "Yes" },
+      { "keywords": "salary, compensation expectation", "answer": "Negotiable" },
+      { "keywords": "start date, available to start, notice period", "answer": "Two weeks after offer" }
+    ]
+  }
+}

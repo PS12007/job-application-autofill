@@ -1,0 +1,3 @@
+# Exported profile backups contain personal data and your resume — never commit them
+workday-profile-*.json
+*.pdf

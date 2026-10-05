@@ -1,0 +1,66 @@
+:root {
+  --bg: #ffffff;
+  --fg: #111827;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --btn: #f3f4f6;
+  --btn-hover: #e5e7eb;
+  --accent: #111827;
+  --accent-fg: #ffffff;
+  --ok: #16a34a;
+  --warn: #a16207;
+  --err: #dc2626;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111318;
+    --fg: #e5e7eb;
+    --muted: #9ca3af;
+    --line: #2a2f3a;
+    --btn: #1c2029;
+    --btn-hover: #262b36;
+    --accent: #e5e7eb;
+    --accent-fg: #111318;
+    --ok: #4ade80;
+    --warn: #facc15;
+    --err: #f87171;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  width: 300px;
+  margin: 0;
+  padding: 14px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.title { font-weight: 600; }
+.step { color: var(--muted); font-size: 12px; }
+button {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--btn);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--btn-hover); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+button.primary:hover:not(:disabled) { opacity: 0.9; background: var(--accent); }
+.row { display: flex; gap: 6px; margin: 6px 0 12px; }
+.row button { font-size: 12px; }
+.toggle { display: flex; align-items: center; gap: 6px; margin: 4px 0; color: var(--muted); cursor: pointer; }
+.status { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.status .err { color: var(--err); }
+.status .note { color: var(--muted); font-size: 12px; }
+.details { list-style: none; margin: 6px 0 0; padding: 0; max-height: 180px; overflow: auto; font-size: 11.5px; }
+.details li { padding: 2px 0; color: var(--muted); }
+.details li::before { content: "●"; margin-right: 6px; }
+.details li.failed::before { color: var(--err); }
+.details li.skipped::before { color: var(--warn); }
+.dump { width: 100%; height: 120px; margin-top: 8px; font: 11px ui-monospace, Consolas, monospace; background: var(--btn); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }

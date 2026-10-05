@@ -1,0 +1,32 @@
+/**
+ * steps.js — work out which application step is on screen, using the progress bar's
+ * active step first and the page headings second.
+ */
+(() => {
+  const WDA = (globalThis.WDA = globalThis.WDA || {});
+
+  WDA.detectStep = () => {
+    const S = WDA.SELECTORS;
+    const sources = [];
+    for (const sel of S.stepIndicators) {
+      document.querySelectorAll(sel).forEach((el) => {
+        if (WDA.isVisible(el)) sources.push({ from: 'progress bar', text: WDA.clean(el.innerText) });
+      });
+    }
+    document.querySelectorAll(S.headingSelector).forEach((el) => {
+      if (WDA.isVisible(el)) sources.push({ from: 'heading', text: WDA.clean(el.innerText) });
+    });
+
+    for (const src of sources) {
+      if (!src.text) continue;
+      for (const step of S.steps) {
+        if (step.pattern.test(src.text)) return { key: step.key, label: step.label, source: `${src.from}: "${src.text}"` };
+      }
+    }
+    return {
+      key: 'unknown',
+      label: 'Unknown step',
+      source: sources.map((s) => s.text).filter(Boolean).slice(0, 3).join(' | ') || 'no heading found',
+    };
+  };
+})();

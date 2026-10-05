@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "Workday Autofill (Personal)",
+  "version": "0.1.0",
+  "description": "Fills Workday job application steps from a locally stored profile. Never clicks Next or Submit.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://*.myworkdayjobs.com/*",
+    "https://*.myworkday.com/*",
+    "https://*.myworkdaysite.com/*"
+  ],
+  "action": {
+    "default_title": "Workday Autofill",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "src/options/options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.myworkdayjobs.com/*",
+        "https://*.myworkday.com/*",
+        "https://*.myworkdaysite.com/*"
+      ],
+      "js": [
+        "src/shared/defaults.js",
+        "src/shared/storage.js",
+        "src/content/selectors.js",
+        "src/content/log.js",
+        "src/content/dom.js",
+        "src/content/match.js",
+        "src/content/inputs.js",
+        "src/content/highlight.js",
+        "src/content/context.js",
+        "src/content/steps.js",
+        "src/content/sections.js",
+        "src/content/fillers/myInformation.js",
+        "src/content/fillers/myExperience.js",
+        "src/content/fillers/questions.js",
+        "src/content/fillers/disclosures.js",
+        "src/content/dump.js",
+        "src/content/floatingButton.js",
+        "src/content/main.js"
+      ],
+      "css": ["src/content/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
