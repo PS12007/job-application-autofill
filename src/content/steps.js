@@ -7,6 +7,12 @@
 
   WDA.detectStep = () => {
     if (WDA.site === 'greenhouse') return { key: 'greenhouse', label: 'Greenhouse application', source: location.hostname };
+    if (WDA.site === 'generic') {
+      const heading = [...document.querySelectorAll('h1, h2, [role="heading"]')].filter(WDA.isVisible).map((h) => WDA.clean(h.innerText));
+      const review = heading.find((h) => /^review\b|review (and submit|your application)/i.test(h));
+      if (review) return { key: 'review', label: 'Review', source: `heading: "${review}"` };
+      return { key: 'generic', label: 'Application form', source: location.hostname };
+    }
     const S = WDA.SELECTORS;
     const sources = [];
     for (const sel of S.stepIndicators) {

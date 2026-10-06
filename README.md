@@ -1,10 +1,10 @@
 # Job Application Autofill (personal)
 
-A Chrome extension (Manifest V3, plain JavaScript, no build step) that fills **Workday** and **Greenhouse** job applications from a profile stored in your browser.
+A Chrome extension (Manifest V3, plain JavaScript, no build step) that fills job applications from a profile stored in your browser. **Workday** and **Greenhouse** have dedicated support; **every other site** (Lever, Ashby, SmartRecruiters, iCIMS, company career pages, …) gets a generic filler that reads the form's labels.
 
 - It **never** clicks Submit, never creates accounts, and never touches CAPTCHAs. By default it doesn't click Next either: every fill click passes through a guard (`WDA.assertClickable` in `src/content/dom.js`) that refuses navigation and sign-in buttons. The only exception is the opt-in **Auto-advance** toggle (see below), whose single navigation click lives in `src/content/autoAdvance.js`.
 - All data stays in `chrome.storage.local`. The extension makes no network requests and has no analytics.
-- Permissions: `storage`, `activeTab`, `scripting`, plus host access to `*.myworkdayjobs.com`, `*.myworkday.com`, `*.myworkdaysite.com` and `*.greenhouse.io` only.
+- Permissions: `storage`, `activeTab`, `scripting`, plus host access to all `http`/`https` pages so it can work on any job site. The content scripts load on every page but stay idle: nothing is read or filled until you press Fill, and the Fill button only appears on pages that look like an application form.
 
 ## Install
 
@@ -77,6 +77,19 @@ It never clicks Submit. With Auto-advance on, it also marks any required field s
 
 Greenhouse selectors are in `src/content/greenhouse/selectors.js`. The same **Dump fields** button works there too.
 
+## Other sites
+
+On any other site, the extension scans the page for form fields and works out what each one is from its label, `autocomplete` attribute, or name/id. It fills:
+- first/last/full/preferred name, email, phone (and a separate country-code dropdown), address, city, state, postal code, country, location
+- LinkedIn, GitHub and website links, the resume (the first file upload that isn't a cover letter, transcript, etc.)
+- current company and title, school, degree, field of study, GPA and graduation date (your first entry only)
+- gender, Hispanic/Latino, race, veteran and disability questions, following your disclosure settings
+- every other question, from your saved answers and work-authorization answers (unmatched ones turn yellow)
+
+Fields that ask about someone else (emergency contact, referrer, reference) are never filled with your details. Autocomplete fields (like Location) pick the closest suggestion; if none matches, your text is typed in and the field is marked yellow so you can check it. Repeatable sections ("Add another job") only get the first entry, and sites that hide their form behind a sign-in still need you to sign in first.
+
+If the form is embedded in an iframe, the popup fills the frame that looks most like an application. Auto-advance works too: it clicks Next / Continue on multi-step forms and never clicks Submit or Apply.
+
 ## Reporting problems with "Dump fields"
 
 Workday's markup varies between companies, so some selectors will need fixing.
@@ -89,7 +102,7 @@ The dump includes the current field values. Blank out anything personal before s
 
 **Debug logging** (popup toggle) logs each fill attempt and its result to the page's DevTools console (F12) with the prefix `[WD-Autofill]`.
 
-Most fixes only need edits in `src/content/selectors.js`.
+Most fixes only need edits in `src/content/selectors.js` (Workday), `src/content/greenhouse/selectors.js` or `src/content/generic/selectors.js` (other sites). On other sites the dump also lists `scanned`: each field's label as the extension sees it and the profile key it matched.
 
 ## Files
 
@@ -100,7 +113,8 @@ icons/
 src/shared/defaults.js      profile schema, defaults, normalisation
 src/shared/storage.js       chrome.storage.local wrapper
 src/content/greenhouse/    ★ Greenhouse selectors + filler
-src/content/sites.js        Workday vs Greenhouse detection
+src/content/generic/       ★ any other site: field patterns, page scanner, filler
+src/content/sites.js        Workday / Greenhouse / generic detection
 src/content/reactSelect.js  Greenhouse searchable dropdowns
 src/content/selectors.js    ★ all Workday automation ids, label patterns, step names, nav blocklist
 src/content/log.js          debug logger
@@ -129,5 +143,5 @@ src/options/                profile editor
 - The Hispanic/Latino and ethnicity questions are sometimes combined into one field. In that case, the Hispanic/Latino setting may be the one that fills it.
 - Resumes larger than about 3 MB may not fit in extension storage, which is about 10 MB in total.
 - Fields are filled one at a time with short pauses, so a long My Experience page can take a minute.
-- Only the top-level page is handled. Workday forms embedded in iframes on other sites aren't supported.
-- If a Workday tab was open before you installed or reloaded the extension, the popup injects the scripts on first use. If that fails, reload the tab.
+- On other sites, fields with no usable label (only an icon, or a label far away from the field) are left for you. Custom widgets that aren't real inputs or ARIA comboboxes/listboxes may not fill.
+- If a tab was open before you installed or reloaded the extension, the popup injects the scripts on first use. If that fails, reload the tab.

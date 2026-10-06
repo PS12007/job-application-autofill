@@ -102,10 +102,10 @@
     return false;
   };
 
-  /** Normalise label text: drop required "*", collapse whitespace. */
+  /** Normalise label text: drop required "*" / "✱", collapse whitespace. */
   WDA.clean = (t) =>
     String(t || '')
-      .replace(/\*/g, '')
+      .replace(/[*✱]/g, '')
       .replace(/\s+/g, ' ')
       .replace(/\s*\(?required\)?\s*$/i, '')
       .trim();

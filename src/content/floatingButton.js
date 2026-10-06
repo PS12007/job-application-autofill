@@ -1,5 +1,5 @@
 /**
- * floatingButton.js — small draggable "Fill" pill on Workday pages (shadow DOM so page
+ * floatingButton.js — small draggable "Fill" pill on application pages (shadow DOM so page
  * styles can't touch it). Can be hidden from the options page.
  */
 (() => {
@@ -35,7 +35,7 @@
     const root = host.attachShadow({ mode: 'open' });
     root.innerHTML = `<style>${STYLE}</style>
       <div class="wrap"><div class="toast" hidden></div>
-      <button class="fab" title="Workday Autofill: fill this page (drag to move)">Fill</button></div>`;
+      <button class="fab" title="Autofill: fill this page (drag to move)">Fill</button></div>`;
     document.documentElement.appendChild(host);
 
     const wrap = root.querySelector('.wrap');

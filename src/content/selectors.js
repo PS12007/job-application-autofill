@@ -65,7 +65,7 @@
     },
 
     /** Dropdown button text that means "nothing chosen yet". */
-    placeholder: /^(select one|select\.{0,3}|choose one|choose\.{0,3}|please select|-+|)$/i,
+    placeholder: /^(-+\s*)?((please )?(select|choose|pick)\b.{0,30}|-+|none selected|)(\s*-+)?$/i,
 
     /** Option text that means "decline to answer" (voluntary disclosures). */
     declinePatterns: [
@@ -107,7 +107,7 @@
 
       // ---- Auto-advance only (opt-in toggle). Used by autoAdvance.js, nowhere else. ----
       nextIds: ['bottom-navigation-next-button', 'pageFooterNextButton', 'bottom-navigation-save-continue', 'wd-CommandButton_next'],
-      nextText: /^(next|save and continue|save & continue|continue)$/i,
+      nextText: /^(next( step| page)?|save and continue|save & continue|continue)\W*$/i,
       /** Auto-advance never clicks a button whose text matches this. */
       neverText: /submit/i,
       /** Workday validation messages shown after clicking Next. */

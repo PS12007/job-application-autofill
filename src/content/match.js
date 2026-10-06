@@ -20,9 +20,24 @@
       .trim();
 
   const shortest = (arr) => arr.reduce((a, b) => (b.n.length < a.n.length ? b : a));
+
+  /**
+   * Among several partial matches, prefer the one sharing most words with the whole
+   * wanted value ("Toronto, Ontario, Canada": "Toronto, ON, Canada" beats "Toronto, OH,
+   * USA"), then the shortest.
+   */
+  const bestPartial = (arr, context) => {
+    if (arr.length === 1 || !context) return shortest(arr);
+    const words = new Set(context.split(' ').filter((w) => w.length > 1));
+    const overlap = (x) => x.n.split(' ').filter((w) => words.has(w)).length;
+    return arr.reduce((a, b) => {
+      const d = overlap(b) - overlap(a);
+      return d > 0 || (d === 0 && b.n.length < a.n.length) ? b : a;
+    });
+  };
   const longest = (arr) => arr.reduce((a, b) => (b.n.length > a.n.length ? b : a));
 
-  function matchOne(items, value, getText) {
+  function matchOne(items, value, getText, context = '') {
     const list = items
       .map((it) => {
         const raw = WDA.clean(getText(it));
@@ -43,14 +58,14 @@
     if (hit) return hit.it;
 
     const starts = list.filter((x) => x.n.startsWith(nv + ' '));
-    if (starts.length) return shortest(starts).it;
+    if (starts.length) return bestPartial(starts, context).it;
 
     const contains = list.filter((x) => ` ${x.n} `.includes(` ${nv} `));
-    if (contains.length) return shortest(contains).it;
+    if (contains.length) return bestPartial(contains, context).it;
 
     if (nv.length >= 4) {
       const wordPrefix = list.filter((x) => ` ${x.n}`.includes(` ${nv}`));
-      if (wordPrefix.length) return shortest(wordPrefix).it;
+      if (wordPrefix.length) return bestPartial(wordPrefix, context).it;
     }
 
     const reverse = list.filter((x) => x.n.length >= 3 && ` ${nv} `.includes(` ${x.n} `));
@@ -80,14 +95,18 @@
     return out;
   };
 
-  /** Pick the item whose text best matches value, or null. */
-  WDA.bestMatch = (items, value, getText = (x) => (typeof x === 'string' ? x : x.text)) => {
+  /**
+   * Pick the item whose text best matches value, or null. `context` (default: value)
+   * breaks ties between partial matches, e.g. the full value while searching one alternative.
+   */
+  WDA.bestMatch = (items, value, getText = (x) => (typeof x === 'string' ? x : x.text), context = value) => {
     if (value === true) value = 'Yes';
     if (value === false) value = 'No';
     if (value == null) return null;
     const alts = value === '__decline__' ? [value] : WDA.expandAlternatives(value);
+    const ctx = WDA.norm(String(context ?? ''));
     for (const alt of alts) {
-      const m = matchOne(items, alt, getText);
+      const m = matchOne(items, alt, getText, ctx);
       if (m) return m;
     }
     return null;

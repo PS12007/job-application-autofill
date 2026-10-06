@@ -79,12 +79,8 @@
   }
   WDA.runFill = runFill;
 
-  /** Embedded Greenhouse forms live in iframes: only answer from the frame with the form. */
-  const shouldAnswer = () =>
-    window === window.top || document.querySelectorAll('input:not([type="hidden"]), select, textarea').length >= 3;
-
+  // The popup picks the frame with the form (WDA.formScore) and messages only that frame.
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (!shouldAnswer()) return false;
     switch (msg && msg.type) {
       case 'WDA_PING':
         sendResponse({ ok: true, step: WDA.detectStep(), running, last: lastResult });
@@ -109,5 +105,30 @@
     if (area === 'local' && changes.settings) WDA.settings = { ...WDA.defaultSettings(), ...(changes.settings.newValue || {}) };
   });
 
-  if (shouldAnswer()) WDA.initFloatingButton();
+  /**
+   * Floating button: always on Workday; on Greenhouse in the top page or a frame with a
+   * form; elsewhere only once the page looks like an application (checked again as
+   * single-page apps render).
+   */
+  const hasInputs = () => document.querySelectorAll('input:not([type="hidden"]), select, textarea').length >= 3;
+  const wantsButton = () =>
+    WDA.site === 'workday' ||
+    (WDA.site === 'greenhouse' && (window === window.top || hasInputs())) ||
+    (WDA.site === 'generic' && WDA.looksLikeApplication());
+
+  if (wantsButton()) WDA.initFloatingButton();
+  else if (WDA.site === 'generic') {
+    let timer = null;
+    const obs = new MutationObserver(() => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        if (wantsButton()) {
+          obs.disconnect();
+          WDA.initFloatingButton();
+        }
+      }, 1500);
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();

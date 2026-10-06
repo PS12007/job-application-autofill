@@ -10,9 +10,16 @@
   const RS = () => WDA.GH.reactSelect;
   const { ok, skip, fail } = WDA.result;
 
-  /** Values currently chosen in a react-select container. */
-  WDA.comboValues = (box) =>
-    box ? [...box.querySelectorAll(RS().value)].map((e) => WDA.clean(e.innerText)).filter(Boolean) : [];
+  /**
+   * Values currently chosen in a react-select container. Other autocompletes (no
+   * react-select control) show the chosen value in the input itself.
+   */
+  WDA.comboValues = (box, input) => {
+    if (!box) return [];
+    const vals = [...box.querySelectorAll(RS().value)].map((e) => WDA.clean(e.innerText)).filter(Boolean);
+    if (!vals.length && input && !box.querySelector(RS().control) && (input.value || '').trim()) vals.push(input.value.trim());
+    return vals;
+  };
 
   function menuOptions(input) {
     const id = input.getAttribute('aria-controls') || input.getAttribute('aria-owns');
@@ -41,7 +48,7 @@
 
   async function clickOption(opt, input, box) {
     const label = WDA.clean(opt.innerText);
-    const chosen = () => WDA.comboValues(box).some((v) => WDA.norm(v).includes(WDA.norm(label)) || WDA.norm(label).includes(WDA.norm(v)));
+    const chosen = () => WDA.comboValues(box, input).some((v) => WDA.norm(v).includes(WDA.norm(label)) || WDA.norm(label).includes(WDA.norm(v)));
     WDA.safeClick(opt);
     if (await WDA.waitFor(chosen, { timeout: 1500 })) return label;
     if (opt.isConnected) {
@@ -90,7 +97,7 @@
   WDA.fillCombobox = async (t, value, ctx) => {
     const input = t.control;
     const box = t.container;
-    const current = WDA.comboValues(box);
+    const current = WDA.comboValues(box, input);
     if (current.some((c) => WDA.bestMatch([c], value))) return ok('already set');
     if (current.length && !ctx.settings.overwrite) return skip(`has value "${current[0]}"`);
 
@@ -98,7 +105,7 @@
     const { alts, key } = WDA.searchPlan(value);
     try {
       for (const term of alts) {
-        const label = await tryTerm(input, box, term, (opts) => WDA.bestMatch(opts, term, optText));
+        const label = await tryTerm(input, box, term, (opts) => WDA.bestMatch(opts, term, optText, value));
         if (label) {
           const exact = alts.some((a) => WDA.norm(a) === WDA.norm(label));
           return ok(exact ? label : `closest match used: ${WDA.firstAlt(value)} → ${label}`);

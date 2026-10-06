@@ -19,6 +19,7 @@
 
   /** Visible required questions that still have no value. */
   WDA.emptyRequired = () => {
+    if (WDA.site === 'generic') return WDA.scanFields().filter((t) => t.required && !WDA.hasValue(t));
     const out = [];
     for (const box of WDA.questionContainers()) {
       const required = box.querySelector('[aria-required="true"], [required]') || rawLabel(box).includes('*');
@@ -67,7 +68,10 @@
   /** Changes when Workday shows a different step/page. */
   const fingerprint = () => {
     const step = WDA.detectStep();
-    const labels = WDA.questionContainers().slice(0, 4).map((b) => WDA.labelFor(b)).join('|');
+    const labels = (WDA.site === 'generic'
+      ? WDA.scanFields().slice(0, 4).map((t) => t.label)
+      : WDA.questionContainers().slice(0, 4).map((b) => WDA.labelFor(b))
+    ).join('|');
     return `${location.pathname}#${step.source}#${labels}`;
   };
 
@@ -90,11 +94,12 @@
     );
     if (res === 'moved') {
       await WDA.waitForSettle(800, 6000);
-      await WDA.waitFor(() => WDA.questionContainers().length || WDA.detectStep().key === 'review', { timeout: 5000 });
+      const fieldsShown = () => (WDA.site === 'generic' ? WDA.scanFields().length : WDA.questionContainers().length);
+      await WDA.waitFor(() => fieldsShown() || WDA.detectStep().key === 'review', { timeout: 5000 });
       return { ok: true };
     }
     if (res === 'errors') {
-      return { ok: false, reason: `Workday showed errors on ${step.label}: ${visibleErrors().slice(0, 3).join('; ')}` };
+      return { ok: false, reason: `The page showed errors on ${step.label}: ${visibleErrors().slice(0, 3).join('; ')}` };
     }
     return { ok: false, reason: `Clicked "${text}" on ${step.label} but the page did not change.` };
   };

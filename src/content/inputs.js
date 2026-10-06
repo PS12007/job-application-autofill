@@ -108,8 +108,8 @@
     };
   };
 
-  /** Greenhouse uses react-select: a role=combobox <input> (Workday's are "prompts"). */
-  const isReactSelectInput = (el) => WDA.site === 'greenhouse' && el.matches('input[role="combobox"]');
+  /** Greenhouse/other sites: a role=combobox <input> is an autocomplete (Workday's are "prompts"). */
+  const isReactSelectInput = (el) => WDA.site !== 'workday' && el.matches('input[role="combobox"]');
 
   function classify(el, container) {
     const C = S().controls;
@@ -137,7 +137,7 @@
     let c;
     if ((c = q(C.fileInput))) return { kind: 'file', control: c };
     if ((c = q('select'))) return { kind: 'select', control: c };
-    if (WDA.site === 'greenhouse' && (c = q('input[role="combobox"]'))) return { kind: 'combobox', control: c };
+    if (WDA.site !== 'workday' && (c = q('input[role="combobox"]'))) return { kind: 'combobox', control: c };
     if (q(C.dateAny)) return { kind: 'date', control: box };
     if ((c = q(C.dropdownButton))) return { kind: 'dropdown', control: c };
     if ((c = q(C.promptInput))) return { kind: 'prompt', control: c };
@@ -199,7 +199,7 @@
         return !!(o && o.value !== '' && !WDA.isPlaceholder(o.text));
       }
       case 'combobox':
-        return WDA.comboValues(t.container).length > 0;
+        return WDA.comboValues(t.container, t.control).length > 0;
       default:
         return false;
     }
@@ -779,7 +779,9 @@
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
-    const done = await WDA.waitFor(() => areaHasName() || document.querySelector(S().upload.success), { timeout: 15000 });
+    // other sites may never show the file name, so don't wait as long there
+    const timeout = WDA.site === 'generic' ? 5000 : 15000;
+    const done = await WDA.waitFor(() => areaHasName() || document.querySelector(S().upload.success), { timeout });
     return done ? ok(resume.name) : skip('file attached but upload not confirmed — check the page');
   }
 })();

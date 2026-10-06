@@ -88,6 +88,14 @@
         .filter((a) => /section|^(workExperience|education|language|website|webAddress)-?\d*$|progressBar/i.test(a))
     )].slice(0, 40);
 
+    // Generic sites: what the page scanner sees (label + recognised profile key)
+    const scanned =
+      WDA.site === 'generic'
+        ? WDA.scanFields().map((t) =>
+            prune({ kind: t.kind, label: trunc(t.label, 80), key: WDA.genericKey(t) || undefined, required: t.required || undefined, attrs: t.attrs.join(' ') })
+          )
+        : [];
+
     const step = WDA.detectStep();
     const meta = {
       site: WDA.site,
@@ -105,7 +113,9 @@
       `"headings": ${JSON.stringify(headings)},\n` +
       `"sections": ${JSON.stringify(sections)},\n` +
       `"buttons": [\n${buttons.map((b) => '  ' + JSON.stringify(b)).join(',\n')}\n],\n` +
-      `"fields": [\n${fields.map((f) => '  ' + JSON.stringify(f)).join(',\n')}\n]\n` +
+      `"fields": [\n${fields.map((f) => '  ' + JSON.stringify(f)).join(',\n')}\n]` +
+      (scanned.length ? `,\n"scanned": [\n${scanned.map((f) => '  ' + JSON.stringify(f)).join(',\n')}\n]` : '') +
+      '\n' +
       '}';
     WDA.log('field dump:\n' + json);
     return { json, count: fields.length };

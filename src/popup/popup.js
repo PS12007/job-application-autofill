@@ -1,13 +1,12 @@
 /**
- * popup.js — Fill / Dump / Settings buttons, the two toggles and the result status.
+ * popup.js — Fill / Dump / Settings buttons, the toggles and the result status.
  */
 (() => {
   const WDA = globalThis.WDA;
   const $ = (id) => document.getElementById(id);
-  const SUPPORTED_URL = /^https:\/\/([^/]+\.)?((myworkdayjobs|myworkday|myworkdaysite)\.com|greenhouse\.io)\//i;
-
   let tabId = null;
-  let injectable = false; // the tab itself is a Workday/Greenhouse URL (so we may inject)
+  let frameId = 0; // the frame holding the form (embedded forms live in iframes)
+  const send = (msg) => chrome.tabs.sendMessage(tabId, msg, { frameId });
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -36,19 +35,41 @@
       .join('');
   }
 
-  /** Make sure the content scripts are running in the tab (inject if the tab predates install). */
+  /** Score every frame (null = content scripts not loaded there). */
+  async function scoreFrames() {
+    const res = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      func: () => {
+        const W = globalThis.WDA;
+        if (!W || !W.mainLoaded) return null;
+        try {
+          return W.site === 'generic' ? W.formScore() : 1000 + W.formScore();
+        } catch (_) {
+          return 0;
+        }
+      },
+    });
+    return res.filter((r) => r && typeof r.frameId === 'number');
+  }
+
+  /**
+   * Make sure the content scripts run in the tab (inject into frames that predate the
+   * install), then pick the frame that looks most like an application form.
+   */
   async function ensureContent() {
-    try {
-      const r = await chrome.tabs.sendMessage(tabId, { type: 'WDA_PING' });
-      if (r && r.ok) return r;
-    } catch (_) {
-      /* not injected yet */
+    let frames = await scoreFrames();
+    const missing = frames.filter((f) => f.result === null).map((f) => f.frameId);
+    if (missing.length) {
+      const cs = chrome.runtime.getManifest().content_scripts[0];
+      const target = { tabId, frameIds: missing };
+      await chrome.scripting.insertCSS({ target, files: cs.css }).catch(() => {});
+      await chrome.scripting.executeScript({ target, files: cs.js }).catch(() => {});
+      frames = await scoreFrames();
     }
-    if (!injectable) throw new Error('no application form found');
-    const cs = chrome.runtime.getManifest().content_scripts[0];
-    await chrome.scripting.insertCSS({ target: { tabId }, files: cs.css });
-    await chrome.scripting.executeScript({ target: { tabId }, files: cs.js });
-    return chrome.tabs.sendMessage(tabId, { type: 'WDA_PING' });
+    const best = frames.filter((f) => f.result != null).sort((a, b) => b.result - a.result || a.frameId - b.frameId)[0];
+    if (!best) throw new Error('no response from the page');
+    frameId = best.frameId;
+    return send({ type: 'WDA_PING' });
   }
 
   async function init() {
@@ -60,9 +81,6 @@
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return setStatus('No active tab.');
     tabId = tab.id;
-    // tab.url is only visible on supported sites. Elsewhere an embedded Greenhouse form
-    // (iframe) may still be there, and its content script answers the ping.
-    injectable = SUPPORTED_URL.test(tab.url || '');
     try {
       const r = await ensureContent();
       if (!r || !r.ok) throw new Error('no response from the page');
@@ -74,9 +92,9 @@
       else setStatus('Ready.');
     } catch (e) {
       setStatus(
-        injectable
+        /^https?:/i.test(tab.url || '')
           ? `<span class="err">Could not reach the page: ${esc(e.message)}. Try reloading the tab.</span>`
-          : 'Open a Workday or Greenhouse application to use this. If the form is embedded in a company site, reload the page.'
+          : 'This page cannot be filled. Open a job application.'
       );
     }
   }
@@ -86,7 +104,7 @@
     $('details').innerHTML = '';
     setStatus('Filling… (you can close this popup; the fill keeps running)');
     try {
-      const r = await chrome.tabs.sendMessage(tabId, { type: 'WDA_FILL' });
+      const r = await send({ type: 'WDA_FILL' });
       showResult(r);
       if (r && r.step) $('step').textContent = r.step.split(' → ').pop();
     } catch (e) {
@@ -98,7 +116,7 @@
 
   $('dump').addEventListener('click', async () => {
     try {
-      const r = await chrome.tabs.sendMessage(tabId, { type: 'WDA_DUMP' });
+      const r = await send({ type: 'WDA_DUMP' });
       if (!r || !r.ok) throw new Error((r && r.error) || 'no response');
       try {
         await navigator.clipboard.writeText(r.json);
