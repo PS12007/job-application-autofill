@@ -140,6 +140,10 @@ src/options/                profile editor
 
 `../runner` is a Python tool that opens each job link from a spreadsheet in its own browser window with this extension loaded, gets past the Apply / sign-in pages, lets the extension fill and advance, and leaves each application on Review for you. See `../runner/README.md`. The bridge only accepts commands written into the extension's storage by the runner, so web pages can't trigger it.
 
+Two things only the runner sets up:
+- **Cover letter**: the runner can store a cover letter file in the profile (`coverLetter`). It's uploaded only to a cover letter upload field: Greenhouse's, a generic form's, or a Workday question whose label says "cover letter". Text boxes asking for a cover letter are never filled.
+- **Unanswered questions**: each skipped or failed field in a fill result carries the full question, its type and, for radio buttons, checkboxes and `<select>`, its options. The runner collects these into `questions.yaml`.
+
 ## Known limitations
 
 - **Selectors are educated guesses** until they've been checked against real dumps. Expect some fields to fail on the first runs.

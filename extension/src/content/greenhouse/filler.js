@@ -69,6 +69,7 @@
     await ctx.fill('Location', F.location, [...new Set(loc)].join('|'));
 
     await ctx.fill('Resume', F.resume, p.resume);
+    if (p.coverLetter) await ctx.fill('Cover letter', F.coverLetter, p.coverLetter);
 
     // ---- Education ----
     const E = G.education;

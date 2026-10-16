@@ -21,11 +21,15 @@ DEFAULTS = {
         "max_tabs": 5,
         "app_timeout_s": 600,
         "delay_between_s": 4,
-        "apply_mode": "manual",
+        "apply_mode": "auto",
         "overwrite_existing": True,
         "keep_failed_tabs": False,
         "resume_after_you_fix": True,
+        "precheck": True,
+        "retry_failed": 1,
+        "keyword_gap": True,
     },
+    "verify_email": {"auto": True},
     "notify": {"sound": True, "desktop": True},
 }
 

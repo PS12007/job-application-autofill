@@ -25,6 +25,7 @@ SIGNIN_FAILED_RX = _rx(P.SIGNIN_FAILED_TEXT)
 EXISTS_RX = _rx(P.ACCOUNT_EXISTS_TEXT)
 WORKDAY_RX = re.compile(P.WORKDAY_HOST, re.I)
 NEVER_CLICK_RX = re.compile(r"\bsubmit\b", re.I)
+ACCOUNT_STEP_RX = re.compile(P.ACCOUNT_STEP_TEXT, re.I)
 
 
 def is_workday(page):
@@ -56,7 +57,7 @@ def first_visible(scope, selectors, limit=6):
         for i in range(min(n, limit)):
             el = loc.nth(i)
             try:
-                if el.is_visible():
+                if el.is_visible() and not el.evaluate("(e, s) => e.matches(s)", P.HONEYPOT):
                     return el
             except Error:
                 pass
@@ -149,15 +150,25 @@ def job_info(page):
     return " ".join(title.split()), desc
 
 
+def account_step(page):
+    """Workday's progress bar is already shown on the "Create Account/Sign In" step."""
+    el = first_visible(page, [P.WORKDAY_ACTIVE_STEP])
+    try:
+        return bool(el and ACCOUNT_STEP_RX.search(el.inner_text(timeout=2000) or ""))
+    except Error:
+        return False
+
+
 def classify(page, br):
-    """One of: captcha, closed, already, form, twofa, verify, create, signin, choose, apply, unknown."""
+    """One of: captcha, closed, already, form, twofa, verify, create, signin, signin_choice,
+    choose, apply, unknown."""
     if captcha(page):
         return "captcha"
     workday = is_workday(page)
     text = page_text(page)
     password = first_visible(page, P.PASSWORD)
 
-    if workday and first_visible(page, P.WORKDAY_FORM) and not password:
+    if workday and first_visible(page, P.WORKDAY_FORM) and not password and not account_step(page):
         return "form"
     if not workday and not password:
         best = bridge.best_frame(page, br)
@@ -173,6 +184,8 @@ def classify(page, br):
         return "verify"
     if password:
         return "create" if first_visible(page, P.VERIFY_PASSWORD) else "signin"
+    if find_clickable(page, P.SIGN_IN_WITH_EMAIL):
+        return "signin_choice"
     if first_visible(page, P.APPLY_CHOOSER):
         return "choose"
     if find_clickable(page, P.APPLY):

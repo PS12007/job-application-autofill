@@ -84,7 +84,12 @@
     const key = WDA.genericKey(t);
     const name = key && NAMES[key] ? NAMES[key] : WDA.shortLabel(t.label || key || t.kind);
 
-    if (key === 'skip' || key === 'coverLetter') return;
+    if (key === 'skip') return;
+    if (key === 'coverLetter') {
+      // Upload one if the runner gave us a file; never write a letter into a text box.
+      if (t.kind === 'file' && p.coverLetter) await ctx.fillTarget('Cover letter', t, p.coverLetter);
+      return;
+    }
 
     if (t.kind === 'file') {
       // the first file input that isn't clearly something else gets the resume

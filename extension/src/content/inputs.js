@@ -174,6 +174,19 @@
       .map((el) => ({ el, text: WDA.controlLabel(el) }));
   }
 
+  /** Option texts of a choice group or <select> (Workday's button dropdowns only list them when open). */
+  WDA.targetOptions = (t) => {
+    try {
+      if (t.kind === 'choice') return choiceOptions(t.control).map((o) => WDA.clean(o.text)).filter(Boolean);
+      if (t.kind === 'select') {
+        return [...t.control.options].filter((o) => o.value !== '' && !WDA.isPlaceholder(o.text)).map((o) => WDA.clean(o.text));
+      }
+    } catch (_) {
+      /* detached */
+    }
+    return [];
+  };
+
   WDA.hasValue = (t) => {
     const C = S().controls;
     switch (t.kind) {

@@ -28,6 +28,7 @@ class Row:
     status: str
     notes: str
     resume: str = ""  # optional "Resume" column: a track name or file path
+    job: object = None  # precheck.JobInfo when the posting was looked up before opening it
 
     @property
     def name(self):

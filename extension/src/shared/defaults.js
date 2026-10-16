@@ -39,6 +39,7 @@
     languages: [],
     links: { linkedin: '', github: '', portfolio: '' },
     resume: null, // { name, type, size, data (base64) }
+    coverLetter: null, // same shape; set by the Python runner (per resume track)
     disclosures: {
       gender: disclosure(),
       hispanicLatino: disclosure(),
@@ -104,6 +105,7 @@
       if (typeof d === 'string') out.disclosures[k] = d ? { mode: 'answer', answer: d } : disclosure();
     }
     if (!isPlain(out.resume) || !out.resume.data) out.resume = null;
+    if (!isPlain(out.coverLetter) || !out.coverLetter.data) out.coverLetter = null;
     return out;
   };
 })();

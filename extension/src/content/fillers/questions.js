@@ -69,7 +69,13 @@
     for (const box of WDA.questionContainers()) {
       if ([...ctx.handled].some((h) => h === box || (h.isConnected && (box.contains(h) || h.contains(box))))) continue;
       const target = WDA.buildTarget(box);
-      if (target.kind === 'unknown' || target.kind === 'file' || !target.label) continue;
+      if (target.kind === 'unknown' || !target.label) continue;
+      if (target.kind === 'file') {
+        if (/cover letter/i.test(target.label) && ctx.profile.coverLetter) {
+          await ctx.fillTarget('Cover letter', target, ctx.profile.coverLetter);
+        }
+        continue;
+      }
       const name = WDA.shortLabel(target.label);
       const ans = WDA.answerFor(target.label, ctx.profile);
       if (!ans) {

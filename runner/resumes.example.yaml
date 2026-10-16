@@ -14,14 +14,21 @@
 #
 # Matching ignores case and only matches whole words ("ml" doesn't match "html").
 # Delete tracks you don't need; add your own the same way.
+#
+# Cover letters (optional): give a track `cover_letter: cover_letters/ml.pdf`, and/or set
+# default_cover_letter below. It's uploaded only where the form has a cover letter upload.
+#
+# The keywords also drive the ATS keyword gap in Notes ("82% keyword match, missing: ...").
 
 min_score: 4
 description_cap: 12
 use_description: true
+default_cover_letter: ""      # e.g. cover_letters/general.pdf
 
 tracks:
   ml:
     file: resumes/ml.pdf
+    # cover_letter: cover_letters/ml.pdf
     titles: [machine learning, ml engineer, mle, ai engineer, artificial intelligence, deep learning, applied scientist,
              research scientist, computer vision, nlp, natural language, llm, generative ai, genai, perception engineer,
              ml ops, mlops, ml infrastructure, ai/ml, ml platform, speech, recommender, ranking engineer]

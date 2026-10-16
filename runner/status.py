@@ -11,10 +11,11 @@ SUBMITTED = "Submitted"
 ALREADY = "Already applied"
 CLOSED = "Posting closed"
 FAILED = "Failed"
+DUPLICATE = "Duplicate"
 DRY_RUN = "Dry run"  # only shown in the summary; never written
 
 ALL = [QUEUED, IN_PROGRESS, READY, NEEDS_CAPTCHA, NEEDS_VERIFY, NEEDS_SIGNIN, NEEDS_ANSWERS,
-       SUBMITTED, ALREADY, CLOSED, FAILED]
+       SUBMITTED, ALREADY, CLOSED, DUPLICATE, FAILED]
 
 NEEDS_YOU = {NEEDS_CAPTCHA, NEEDS_VERIFY, NEEDS_SIGNIN, NEEDS_ANSWERS}
 # A tab with one of these stays open for you (and counts toward --max-tabs).
@@ -22,7 +23,7 @@ WAITING = {READY} | NEEDS_YOU
 # Stuck before the form: the watcher resumes filling once you get past it.
 GATED = {NEEDS_CAPTCHA, NEEDS_VERIFY, NEEDS_SIGNIN}
 # Skipped unless --force.
-DONE = {SUBMITTED, READY, ALREADY, CLOSED}
+DONE = {SUBMITTED, READY, ALREADY, CLOSED, DUPLICATE}
 # Processed by default (besides blank).
 TODO = {QUEUED, IN_PROGRESS} | NEEDS_YOU
 

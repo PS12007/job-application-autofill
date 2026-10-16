@@ -33,7 +33,15 @@
           if (i >= 0) tally[details.splice(i, 1)[0].status]--;
         }
         tally[res.status] = (tally[res.status] || 0) + 1;
-        details.push({ field: name, status: res.status, reason: res.reason || '' });
+        const d = { field: name, status: res.status, reason: res.reason || '' };
+        if (target && res.status !== 'ok' && target.label) {
+          // The full question and its options, so the runner can collect unanswered questions.
+          d.question = WDA.clean(target.label);
+          d.kind = target.kind;
+          const options = WDA.targetOptions(target);
+          if (options.length) d.options = options.slice(0, 30);
+        }
+        details.push(d);
         if (target) WDA.mark(target.container || target.el, res.status, `${name}: ${res.reason || res.status}`);
         const line = `${res.status.toUpperCase()} ${name}${res.reason ? ' — ' + res.reason : ''}`;
         if (res.status === 'failed') WDA.warn(line, target || '');

@@ -34,6 +34,7 @@ def parse_args(argv=None):
     p.add_argument("--config", help="config file (default: config.yaml)")
     p.add_argument("--profile", help="profile file (default: profile.json)")
     p.add_argument("--resumes", help="resume keyword file (default: resumes.yaml)")
+    p.add_argument("--questions", help="question bank file (default: questions.yaml)")
     return p.parse_args(argv)
 
 
@@ -60,6 +61,7 @@ def setup_logging(debug):
 
 
 def select_rows(rows, args):
+    """Rows to consider, in sheet order (--count is applied later, in prepare())."""
     out = []
     for r in rows:
         if args.start and r.num < args.start:
@@ -75,7 +77,50 @@ def select_rows(rows, args):
             if st and st != S.FAILED and st not in S.TODO:
                 continue  # Submitted, Ready to submit, Already applied, Posting closed, or your own text
         out.append(r)
-    return out[: args.count] if args.count else out
+    return out
+
+
+def prepare(cands, sheet, cfg, args):
+    """Look up Workday postings, mark closed ones and duplicates, and return up to --count
+    rows to open. Rows past --count are left untouched."""
+    import precheck
+
+    want = args.count or len(cands)
+    use_precheck = bool(cfg["run"]["precheck"])
+    key = lambda r: precheck.job_key(r.link, r.job.req_id if r.job else "")
+    taken = {}  # job key -> row already done or queued
+    if not args.force:
+        for r in sheet.rows:
+            if r.status in S.DONE and r.status != S.DUPLICATE and r.link.startswith("http"):
+                taken.setdefault(key(r), r)
+    queue, skipped = [], []
+    for start in range(0, len(cands), 8):
+        if len(queue) >= want:
+            break
+        chunk = cands[start:start + 8]
+        if use_precheck:
+            infos = precheck.lookup_many([r.link for r in chunk if precheck.parse(r.link)])
+            for r in chunk:
+                r.job = infos.get(r.link)
+        for r in chunk:
+            if len(queue) >= want:
+                break
+            if r.job and r.job.closed:
+                sheet.update(r, S.CLOSED, "Checked before opening: the posting no longer exists or isn't open.")
+                log.info("Row %s (%s): posting closed (checked without opening it)", r.num, r.name)
+                skipped.append(r)
+                continue
+            k = key(r)
+            other = taken.get(k)
+            if other is not None and other.num != r.num and not args.force:
+                note = f"Same job as row {other.num}" + (f" ({other.status})" if other.status else "")
+                sheet.update(r, S.DUPLICATE, note)
+                log.info("Row %s (%s): duplicate of row %s, skipped", r.num, r.name, other.num)
+                skipped.append(r)
+                continue
+            taken[k] = r
+            queue.append(r)
+    return queue, skipped
 
 
 def print_summary(rows):
@@ -104,10 +149,11 @@ def main(argv=None):
         log.info("Dry run: first page only, no accounts created, nothing written to the sheet.")
 
     sheet = open_sheet(cfg, args.dry_run)
-    rows = select_rows(sheet.rows, args)
+    rows, skipped = prepare(select_rows(sheet.rows, args), sheet, cfg, args)
     if not rows:
-        log.info("Nothing to do: no rows to process (use --redo-failed or --force to include more).")
+        log.info("Nothing to open: no rows to process (use --redo-failed or --force to include more).")
         sheet.close()
+        print_summary(skipped)
         return 0
     log.info("%d application(s) to process: rows %s", len(rows), ", ".join(str(r.num) for r in rows[:30])
              + (" …" if len(rows) > 30 else ""))
@@ -123,20 +169,40 @@ def main(argv=None):
     from resumes import ResumePicker
 
     picker = ResumePicker(profile.get("resume"), args.resumes)
+    gap = None
+    if cfg["run"]["keyword_gap"]:
+        from ats import KeywordGap
+
+        gap = KeywordGap(picker.vocabulary())
+    from questions import QuestionBank, merged_answers
+
+    bank = QuestionBank(args.questions)
+    own_answers = list(profile.get("savedAnswers") or [])
+    profile["savedAnswers"] = merged_answers(own_answers, bank)
+    if bank.answers():
+        log.info("Using %d answer(s) from %s", len(bank.answers()), bank.file.name)
+    from inbox import Mailbox
+
+    mailbox = Mailbox(cfg, email)
+    if mailbox.ready:
+        log.info("Verification emails: checking %s on %s", mailbox.user, mailbox.host)
 
     import browser
-    from flow import BrowserClosed, Runner
+    from flow import BrowserClosed, Runner, tenant
     from notify import Notifier
     from tabs import Tabs
 
-    done = []
+    done = list(skipped)
     current = None
+    retries = int(cfg["run"]["retry_failed"])
     try:
         with sync_playwright() as pw:
             br = browser.launch(pw, cfg, profile, args.debug)
-            runner = Runner(cfg, br, email, password, picker, args.dry_run, args.debug)
+            runner = Runner(cfg, br, email, password, picker, args.dry_run, args.debug,
+                            bank=bank, gap=gap, default_resume=profile.get("resume"), own_answers=own_answers)
+            runner.applied = {tenant(r.link) for r in sheet.rows if r.status == S.SUBMITTED and r.link}
             tabs = Tabs(br, sheet, runner, Notifier(cfg), args.max_tabs or int(cfg["run"]["max_tabs"]),
-                        bool(cfg["run"]["resume_after_you_fix"]))
+                        bool(cfg["run"]["resume_after_you_fix"]), mailbox)
             try:
                 for i, row in enumerate(rows):
                     tabs.wait_for_slot()
@@ -144,6 +210,14 @@ def main(argv=None):
                     current = (row, row.status, row.notes)
                     sheet.update(row, S.IN_PROGRESS)
                     out, page = runner.process(br.ctx.new_page(), row)
+                    for _ in range(retries):
+                        if out.status != S.FAILED or not out.retry:
+                            break
+                        log.info("  failed (%s); trying once more", out.notes[:150])
+                        if not page.is_closed():
+                            page.close()
+                        tabs.idle(3)
+                        out, page = runner.process(br.ctx.new_page(), row)
                     tabs.report(row, out)
                     current = None
                     done.append(row)
@@ -176,6 +250,10 @@ def main(argv=None):
             sheet.update(row, prev_status or S.QUEUED, "Interrupted; will be retried next run.")
         sheet.close()
         print_summary(done)
+        waiting = bank.pending()
+        if waiting:
+            print(f"\n{len(waiting)} question(s) waiting for an answer in {bank.file.name} "
+                  "(python questions.py lists them). Answer once; every later application uses it.")
         print(f"\nLog: {log_file}")
     return 0
 

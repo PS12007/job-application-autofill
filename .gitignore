@@ -17,3 +17,6 @@ runner/screenshots/
 runner/logs/
 runner/.venv/
 __pycache__/
+runner/questions.yaml
+runner/cover_letters/
+.pytest_cache/

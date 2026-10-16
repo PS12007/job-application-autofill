@@ -1,0 +1,123 @@
+<!doctype html>
+<!--
+  Mock Workday site for the end-to-end test (tests/test_e2e.py). Mirrors the real pages'
+  data-automation-ids as seen on a live Workday tenant (Oct 2026): the "Start Your
+  Application" popup, the "Sign in with email" landing on the Create Account/Sign In step
+  (progress bar already showing), the beecatcher honeypot, sign in / create account forms.
+
+  The tenant (first part of the host name) decides what happens:
+    acme   existing account (password pw-test): sign in works
+    beta   no account: create account works; the form has an extra questions step
+    gamma  no account: create account → "verify your email"; /?activate=1 verifies it
+    delta  like beta (the test's sheet has an earlier Submitted delta row, so the runner
+           picks "Use My Last Application" there; it's offered everywhere, as on real Workday)
+  ?job=closed | applied | captcha | questions change the job page.
+-->
+<html><head><meta charset="utf-8"><title>Mock Workday</title>
+<style>body{font:14px sans-serif;margin:20px} [data-automation-id^=formField-]{margin:8px 0} .modal{border:1px solid #888;padding:12px}
+.bee{position:absolute;left:-10000px;top:0;width:10px;height:10px}</style></head>
+<body><div id="app"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const job = q.get('job') || 'ready';
+const tenant = location.hostname.split('.')[0];
+const app = document.getElementById('app');
+const S = { view: job === 'closed' ? 'closed' : 'job', step: 0 };
+const loggedIn = () => sessionStorage.getItem('in') === '1';
+const verified = () => tenant === 'acme' || localStorage.getItem('verified') === '1';
+if (q.get('activate')) { localStorage.setItem('verified', '1'); S.view = 'activated'; }
+
+const progress = (name) => `<ol data-automation-id="progressBar"><li data-automation-id="progressBarActiveStep">current step ${name}</li></ol>`;
+const bee = '<input type="text" class="bee" data-automation-id="beecatcher" tabindex="-1">';
+
+function render() {
+  const v = S.view;
+  if (v === 'closed') app.innerHTML = "<h2>The page you are looking for doesn't exist.</h2>";
+  else if (v === 'activated') app.innerHTML = '<h2>Your account has been verified. You can now sign in.</h2>';
+  else if (v === 'job') app.innerHTML = `<h2 data-automation-id="jobPostingHeader">Software Developer (${job})</h2>
+    <div data-automation-id="jobPostingDescription"><p>Job description: Python, Kubernetes and React.</p></div>
+    <a href="#" role="button" data-automation-id="adventureButton">Apply</a>
+    ${job === 'captcha' ? '<iframe src="http://newassets.hcaptcha.com/frame.html" width="300" height="80"></iframe>' : ''}`;
+  else if (v === 'already') app.innerHTML = "<h2>You've already applied for this job.</h2>";
+  else if (v === 'choose') app.innerHTML = `<div class="modal"><h3>Start Your Application</h3>
+    <a href="#" role="button" data-automation-id="autofillWithResume">Autofill with Resume</a>
+    <a href="#" role="button" data-automation-id="applyManually">Apply Manually</a>
+    <a href="#" role="button" data-automation-id="useMyLastApplication">Use My Last Application</a></div>`;
+  else if (v === 'landing') app.innerHTML = `${progress('Create Account/Sign In')}
+    <button data-automation-id="GoogleSignInButton">Sign in with Google</button>
+    <button data-automation-id="SignInWithEmailButton">Sign in with email</button>`;
+  else if (v === 'create') app.innerHTML = `${progress('Create Account/Sign In')}<h2>Create Account</h2>
+    <div data-automation-id="errorMessage">${S.err || ''}</div>
+    <label>Email <input type="text" data-automation-id="email"></label><br>
+    <label>Password <input type="password" data-automation-id="password"></label><br>
+    <label>Verify <input type="password" data-automation-id="verifyPassword"></label><br>
+    <label><input type="checkbox" data-automation-id="createAccountCheckbox"> I agree to the terms</label><br>
+    <label><input type="checkbox" id="marketing"> Send me job alerts</label><br>${bee}
+    <div data-automation-id="noCaptchaWrapper"><div role="button" tabindex="0" data-automation-id="createAccountSubmitButton">Create Account</div></div>
+    <button data-automation-id="signInLink">Sign In</button>`;
+  else if (v === 'signin') app.innerHTML = `${progress('Create Account/Sign In')}<h2>Sign In</h2>
+    <div data-automation-id="errorMessage">${S.err || ''}</div>
+    <label>Email <input type="text" data-automation-id="email"></label><br>
+    <label>Password <input type="password" data-automation-id="password"></label><br>${bee}
+    <button data-automation-id="signInSubmitButton">Sign In</button>
+    <button data-automation-id="createAccountLink">Create Account</button>`;
+  else if (v === 'verify') app.innerHTML = '<h2>Verify your account</h2><p>We have sent you an email. Click the link to activate your account.</p>';
+  else if (v === 'done') app.innerHTML = '<h2>Application Submitted</h2><p>Thanks for applying!</p>';
+  else if (v === 'form') {
+    const steps = job === 'questions' ? ['My Information', 'Application Questions', 'Review'] : ['My Information', 'Review'];
+    const name = steps[S.step];
+    let body = '';
+    if (name === 'My Information') body = `
+      <div data-automation-id="formField-legalNameSection_firstName"><label>First Name*</label><input data-automation-id="legalNameSection_firstName" aria-required="true"></div>
+      <div data-automation-id="formField-legalNameSection_lastName"><label>Last Name*</label><input data-automation-id="legalNameSection_lastName" aria-required="true"></div>
+      <div data-automation-id="formField-addressSection_city"><label>City</label><input data-automation-id="addressSection_city"></div>`;
+    else if (name === 'Application Questions') body = `
+      <div data-automation-id="formField-q1"><label for="q1">What is your favourite mock colour?*</label><input id="q1" aria-required="true"></div>
+      <fieldset data-automation-id="formField-q2"><legend>Are you willing to work mock weekends?*</legend>
+        <label><input type="radio" name="q2" value="y" aria-required="true"> Yes</label>
+        <label><input type="radio" name="q2" value="n"> No</label></fieldset>`;
+    else body = '<p>Check everything, then submit.</p>';
+    const btn = name === 'Review' ? 'Submit' : 'Save and Continue';
+    app.innerHTML = `${progress(name)}
+      <h2>${name}</h2>${body}<div data-automation-id="errorBanner" style="color:red">${S.err || ''}</div>
+      <div data-automation-id="pageFooter"><button data-automation-id="bottom-navigation-next-button">${btn}</button></div>`;
+  }
+}
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-automation-id]');
+  if (!el) return;
+  const id = el.getAttribute('data-automation-id');
+  const val = (aid) => (document.querySelector(`[data-automation-id="${aid}"]`) || {}).value;
+  if (e.target.closest('input, label') || el.matches('fieldset, [data-automation-id^="formField-"]')) return;
+  e.preventDefault();
+  S.err = '';
+  if (val('beecatcher')) localStorage.setItem('bee', val('beecatcher'));
+  if (id === 'adventureButton') S.view = job === 'applied' ? 'already' : 'choose';
+  else if (id === 'applyManually' || id === 'useMyLastApplication') {
+    if (id === 'useMyLastApplication') localStorage.setItem('usedLast', '1');
+    S.view = loggedIn() ? 'form' : 'landing';
+  }
+  else if (id === 'SignInWithEmailButton') S.view = 'signin';
+  else if (id === 'signInLink') S.view = 'landing';
+  else if (id === 'createAccountLink') S.view = 'create';
+  else if (id === 'signInSubmitButton') {
+    if (verified() && val('password') === 'pw-test') { sessionStorage.setItem('in', '1'); S.view = 'form'; }
+    else S.err = 'Wrong email address or password.';
+  } else if (id === 'createAccountSubmitButton') {
+    localStorage.setItem('marketing', document.getElementById('marketing').checked);
+    localStorage.setItem('terms', document.querySelector('[data-automation-id="createAccountCheckbox"]').checked);
+    if (val('password') !== val('verifyPassword')) S.err = 'Passwords do not match.';
+    else if (tenant === 'acme') S.err = 'An account with this email already exists.';
+    else if (tenant === 'gamma') S.view = 'verify';
+    else { sessionStorage.setItem('in', '1'); S.view = 'form'; }
+  } else if (id === 'bottom-navigation-next-button') {
+    const empty = [...document.querySelectorAll('input[aria-required="true"]')].filter((i) =>
+      i.type === 'radio' ? !document.querySelector(`input[name="${i.name}"]:checked`) : !i.value);
+    if (el.innerText === 'Submit') S.view = 'done';
+    else if (empty.length) S.err = 'Errors found: required fields missing';
+    else S.step++;
+  } else return;
+  setTimeout(render, 300);
+});
+render();
+</script></body></html>

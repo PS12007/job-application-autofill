@@ -48,6 +48,11 @@
         labels: [/^resume|^cv\b/i],
         selectors: ['input[type="file"][id*="resume" i]', 'input[type="file"][name*="resume" i]', 'input[type="file"]'],
       },
+      coverLetter: {
+        ids: ['cover_letter', 'cover_letter_file', 'job_application_cover_letter'],
+        labels: [/^cover letter/i],
+        selectors: ['input[type="file"][id*="cover" i]', 'input[type="file"][name*="cover" i]'],
+      },
       linkedin: { labels: [/linkedin/i] },
       github: { labels: [/github/i] },
       portfolio: { labels: [/portfolio|^website|personal (web)?site/i] },

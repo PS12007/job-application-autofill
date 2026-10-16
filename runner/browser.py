@@ -44,17 +44,21 @@ class Browser:
         """chrome.storage.local.set(data), from the extension's own page."""
         self.ext_page().evaluate("d => chrome.storage.local.set(d)", data)
 
-    def set_resume(self, key, resume):
-        """Swap the resume the extension uploads (no-op if it's already that one)."""
+    def update_profile(self, fields):
+        """Merge fields into the extension's stored profile."""
+        self.ext_page().evaluate(
+            """async f => {
+                const { profile } = await chrome.storage.local.get('profile');
+                await chrome.storage.local.set({ profile: { ...(profile || {}), ...f } });
+            }""",
+            fields,
+        )
+
+    def set_files(self, key, resume, cover_letter=None):
+        """Swap the resume / cover letter the extension uploads (no-op if unchanged)."""
         if key == self._resume_key:
             return
-        self.ext_page().evaluate(
-            """async r => {
-                const { profile } = await chrome.storage.local.get('profile');
-                await chrome.storage.local.set({ profile: { ...(profile || {}), resume: r } });
-            }""",
-            resume,
-        )
+        self.update_profile({"resume": resume, "coverLetter": cover_letter})
         self._resume_key = key
 
 

@@ -31,9 +31,14 @@ APPLY_MODES = {
     "last": {"css": ['[data-automation-id="useMyLastApplication"]'], "text": r"^\s*use my last application\s*$"},
 }
 # Any of these visible = the "how do you want to apply" chooser is open.
-APPLY_CHOOSER = ['[data-automation-id="applyManually"]', '[data-automation-id="autofillWithResume"]']
+APPLY_CHOOSER = ['[data-automation-id="applyManually"]', '[data-automation-id="autofillWithResume"]',
+                 '[data-automation-id="useMyLastApplication"]']
 
 # ---- Account ----
+# Workday's first sign-in screen: "Sign in with Google / LinkedIn / email". Only email is used.
+SIGN_IN_WITH_EMAIL = {"css": ['[data-automation-id="SignInWithEmailButton"]'], "text": r"^\s*(sign in|continue) with (e-?mail|email address)\s*$"}
+# Hidden bot-trap inputs ("honeypots"). Never typed into.
+HONEYPOT = '[data-automation-id="beecatcher"]'
 EMAIL = ['input[data-automation-id="email"]', 'input[type="email"]', 'input[autocomplete="email"]', 'input[name*="email" i]']
 PASSWORD = ['input[data-automation-id="password"]', 'input[type="password"]']
 VERIFY_PASSWORD = ['input[data-automation-id="verifyPassword"]', 'input[name*="confirm" i][type="password"]',
@@ -65,6 +70,9 @@ VERIFY_EMAIL_TEXT = [
 # ---- The application form ----
 # Workday: the progress bar only exists inside the application.
 WORKDAY_FORM = ['[data-automation-id="progressBar"]', '[data-automation-id="progressBarActiveStep"]']
+WORKDAY_ACTIVE_STEP = '[data-automation-id="progressBarActiveStep"]'
+# The progress bar also shows on the account step ("Create Account/Sign In"): not the form yet.
+ACCOUNT_STEP_TEXT = r"sign[- ]?in|create account|log[- ]?in"
 
 # ---- Outcomes ----
 POSTING_CLOSED_TEXT = [
