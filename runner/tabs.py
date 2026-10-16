@@ -138,12 +138,7 @@ class Tabs:
                     vp.close()
                 except Error:
                     pass
-            out, new_page = self.runner.resume(t.page, t.row, restart=True)
-            t.page = new_page
-            self.report(t.row, out)
-            if not out.keep_open:
-                self.tracked.remove(t)
-                new_page.close()
+            self._continue(t, restart=True)
 
     def _check(self, t):
         page, row = t.page, t.row
@@ -160,18 +155,32 @@ class Tabs:
             unblocked = state == "form" or (row.status == S.NEEDS_CAPTCHA and state not in ("captcha", "unknown"))
             if unblocked:
                 log.info("Row %s (%s): you got past %s, continuing", row.num, row.name, row.status.split(": ")[-1])
-                out, new_page = self.runner.resume(page, row, from_gate=state != "form")
-                t.page = new_page
-                self.report(row, out)
-                if not out.keep_open:
-                    self.tracked.remove(t)
-                    new_page.close()
+                self._continue(t, from_gate=state != "form")
             return
 
         if row.status == S.NEEDS_ANSWERS and gate.on_review(page, self.br):
             self.sheet.update(row, S.READY, self.runner.tag(row, "You finished the questions; check it, then submit."))
             self.notify(f"Ready to submit: {row.name}", f"Row {row.num}")
             log.info("Row %s (%s): reached Review, Ready to submit", row.num, row.name)
+
+    def _continue(self, t, **kw):
+        """Carry on with an unblocked tab. If that got past the company's sign-in, the other
+        tabs stuck at the same company's sign-in / verification are retried too."""
+        out, new_page = self.runner.resume(t.page, t.row, **kw)
+        t.page = new_page
+        self.report(t.row, out)
+        if not out.keep_open:
+            self.tracked.remove(t)
+            new_page.close()
+        if out.status in S.GATED:
+            return
+        company = tenant(t.row.link)
+        self.runner.accounts.pop(company, None)
+        for other in [o for o in self.tracked if o is not t and o.row.status in (S.NEEDS_SIGNIN, S.NEEDS_VERIFY)]:
+            if other in self.tracked and other.row.status in S.GATED and tenant(other.row.link) == company \
+                    and not other.page.is_closed():
+                log.info("Row %s (%s): signed in at this company now, retrying", other.row.num, other.row.name)
+                self._continue(other, restart=True)
 
     def report(self, row, out):
         """Write an outcome to the sheet and notify when it needs you."""

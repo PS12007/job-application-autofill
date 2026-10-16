@@ -64,7 +64,9 @@ TWO_FACTOR_TEXT = [
 VERIFY_EMAIL_TEXT = [
     r"verify your (email|account|e-mail)", r"(verification|activation) (email|e-mail|link) (has been |was )?sent",
     r"check your (email|inbox|e-mail)", r"activate your account", r"confirm your (email|e-mail) address",
-    r"we('ve| have) sent (you )?an? (email|e-mail)",
+    r"we('ve| have) sent (you )?an? (verification |activation |confirmation )?(email|e-mail|link)",
+    r"verif(y|ication)[^.\n]{0,40}(email|e-mail|inbox)", r"confirm your account",
+    r"account (has been |was )?(successfully )?created",
 ]
 
 # ---- The application form ----

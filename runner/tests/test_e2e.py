@@ -61,6 +61,8 @@ ROWS = {
     8: ("Acme again", U("acme")),
     9: ("Delta", U("delta")),
     10: ("Delta earlier", U("delta", "older")),  # already Submitted: "Use My Last Application" at delta
+    11: ("Epsilon", U("epsilon")),  # back on Sign In after creating the account: verify by email
+    12: ("Epsilon 2", U("epsilon", "second")),  # same company: no second account
 }
 
 
@@ -136,9 +138,10 @@ def test_full_run(mock_site, tmp_path):
     try:
         got = wait_for(sheet, {
             2: S.READY, 3: S.NEEDS_ANSWERS, 4: S.READY, 5: S.CLOSED, 6: S.ALREADY,
-            7: S.NEEDS_CAPTCHA, 8: S.DUPLICATE, 9: S.READY,
+            7: S.NEEDS_CAPTCHA, 8: S.DUPLICATE, 9: S.READY, 11: S.NEEDS_VERIFY, 12: S.NEEDS_VERIFY,
         }, proc)
         assert "row 2" in got[8][1]
+        assert "earlier row" in got[12][1]
         assert "favourite mock colour" in got[3][1]
 
         bank = yaml.safe_load((tmp_path / "questions.yaml").read_text(encoding="utf-8"))
@@ -152,6 +155,13 @@ def test_full_run(mock_site, tmp_path):
             beta = tab("beta.")
             assert beta.evaluate("[localStorage.terms, localStorage.marketing, localStorage.bee || '']") == ["true", "false", ""]
             assert tab("delta.").evaluate("localStorage.usedLast") == "1"
+            assert tab("epsilon.").evaluate("localStorage.created") == "1"  # one account per company
+
+            # You verify epsilon from your email and sign in in its first tab: the watcher
+            # fills it, then retries the other epsilon tab, which now signs in by itself.
+            eps = tab("epsilon.wd5.myworkdayjobs.com/?job=ready")
+            eps.evaluate("localStorage.setItem('verified', '1'); sessionStorage.setItem('in', '1'); S.view = 'form'; render()")
+            wait_for(sheet, {11: S.READY, 12: S.READY}, proc, timeout=90)
             assert beta.evaluate("localStorage.usedLast || ''") == ""  # never applied at beta: Apply Manually
 
             # You submit the acme tab: the watcher marks it Submitted and closes it.

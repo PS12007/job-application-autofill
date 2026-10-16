@@ -213,15 +213,23 @@ def click(el, what):
     if NEVER_CLICK_RX.search(text):
         raise RuntimeError(f'Refused to click "{text}"')
     log.debug("click %s (%s)", what, text or "no text")
+    # Workday lays a transparent "click_filter" div over its Sign In / Create Account buttons
+    # (seen on live sites, Oct 2026): that's what takes the click. Clicking the button itself
+    # just makes Playwright scroll and retry until it times out.
+    overlay = el.locator('xpath=..').locator('> [data-automation-id="click_filter"]')
     try:
-        el.click(timeout=6000)
-    except Error:
-        # Workday lays a transparent "click_filter" div over some buttons.
-        overlay = el.locator('xpath=..').locator('[data-automation-id="click_filter"]')
-        if overlay.count():
+        if overlay.count() and overlay.first.is_visible():
+            label = overlay.first.get_attribute("aria-label") or ""
+            if NEVER_CLICK_RX.search(label):
+                raise RuntimeError(f'Refused to click "{label}"')
             overlay.first.click(timeout=6000)
-        else:
-            el.click(timeout=6000, force=True)
+            return
+    except Error:
+        pass
+    try:
+        el.click(timeout=4000)
+    except Error:
+        el.click(timeout=4000, force=True)
 
 
 def type_into(el, value):

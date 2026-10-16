@@ -16,12 +16,11 @@ All commands are typed in **PowerShell**. The paths assume the repo is at `C:\-C
 1. **Open PowerShell in the runner folder and set up Python:**
    ```powershell
    cd C:\-CS\myworkday\runner
-   python -m venv .venv                      # skip if the .venv folder already exists
-   .venv\Scripts\activate
-   pip install -r requirements.txt
-   python -m playwright install chromium     # downloads the browser the runner uses
+   python -m venv .venv                                     # skip if the .venv folder already exists
+   .venv\Scripts\python.exe -m pip install -r requirements.txt
+   .venv\Scripts\python.exe -m playwright install chromium   # the browser the runner uses (once)
    ```
-   If `activate` says *running scripts is disabled*, skip it. Then type `.venv\Scripts\python.exe` instead of `python` in every command below.
+   After that, start everything with the shortcuts in this folder: `.\run` (the runner), `.\dump` (dump_fields.py) and `.\questions` (questions.py). They use the `.venv` Python, so there's nothing to activate and no "running scripts is disabled" error. Plain `python apply.py` uses your system Python, which doesn't have the packages (`No module named 'dotenv'`).
 
 2. **Password file:**
    ```powershell
@@ -43,7 +42,7 @@ All commands are typed in **PowerShell**. The paths assume the repo is at `C:\-C
    - **Resumes per job type** (optional): PDFs in `runner\resumes\`, named as in "Resumes per job" (`swe.pdf`, `backend.pdf`, `ml.pdf`, `embedded.pdf`, …). Make only the ones you need; any other job gets the main resume.
    - **Cover letters** (optional): `runner\cover_letters\`, then set them in `resumes.yaml`.
 
-5. **The spreadsheet** `runner\applications.xlsx`. Running `python apply.py` once creates it if it's missing. Row 1 holds the headers:
+5. **The spreadsheet** `runner\applications.xlsx`. Running `.\run` once creates it if it's missing. Row 1 holds the headers:
 
    | Row ID | Company | Role | Link | Status | Notes | Last Updated | Resume |
    |---|---|---|---|---|---|---|---|
@@ -51,28 +50,27 @@ All commands are typed in **PowerShell**. The paths assume the repo is at `C:\-C
 
    - **Fill in:** Company, Role and Link (the job posting URL), one job per row from row 2.
    - **Leave blank:** Status, Notes and Last Updated. The runner writes them.
-   - **Resume** (optional): a resume type (`ml`) or a file path, to force a resume for that row.
+   - **Resume** (optional): forces a resume for that row. A resume type (`business`), its file name (`business.pdf`) or a path (`resumes/business.pdf`) all work.
 
-6. **First test:** add 2–3 real job links, **save and close Excel**, then run `python apply.py --count 3` (see B). If a page goes wrong, see "When selectors break" below.
+6. **First test:** add 2–3 real job links, **save and close Excel**, then run `.\run --count 3` (see B). If a page goes wrong, see "When selectors break" below.
 
 ### B. Every time you use it
 
-1. Add new rows to `applications.xlsx`. **Save and close it** (the runner can't save while Excel has it open).
+1. Add new rows to `applications.xlsx`. **Save and close it.** Excel locks the file while it's open: if it is, the runner says so and waits until you close it.
 2. Start it:
    ```powershell
    cd C:\-CS\myworkday\runner
-   .venv\Scripts\activate
-   python apply.py
+   .\run
    ```
    Useful options (combine as you like):
    ```powershell
-   python apply.py --count 5                 # only the next 5 applications
-   python apply.py --start 12                # start at Excel row 12 (row 2 = first job)
-   python apply.py --start 12 --count 5      # 5 applications from row 12
-   python apply.py --max-tabs 3              # at most 3 tabs waiting for you at once
-   python apply.py --redo-failed             # also retry rows marked Failed
-   python apply.py --force --start 7 --count 1   # redo row 7 whatever its status
-   python apply.py --dry-run --count 2       # test: fill the first page only, change nothing
+   .\run --count 5                 # only the next 5 applications
+   .\run --start 12                # start at Excel row 12 (row 2 = first job)
+   .\run --start 12 --count 5      # 5 applications from row 12
+   .\run --max-tabs 1              # one at a time: waits until you submit/close each tab
+   .\run --redo-failed             # also retry rows marked Failed
+   .\run --force --start 7 --count 1   # redo row 7 whatever its status
+   .\run --dry-run --count 2       # test: fill the first page only, change nothing
    ```
    Without `--start` it still skips finished rows (Submitted, Ready, Already applied, Posting closed, Duplicate, or any status you typed yourself). So it always carries on where it left off.
 3. **Use your computer normally.** The runner opens its *own* browser window, separate from your Chrome.
@@ -85,22 +83,22 @@ All commands are typed in **PowerShell**. The paths assume the repo is at `C:\-C
    | **Ready to submit** | Check every page of the application, then click **Submit** yourself. The row turns *Submitted* and the tab closes. |
    | **Needs you: unanswered questions** | Answer the questions in that tab and click through to Review. The row turns *Ready to submit*. Then submit. |
    | **Needs you: CAPTCHA** | Solve it in the tab. The runner carries on filling. |
-   | **Needs you: sign in** | Sign in in the tab (2FA code, different password, …). The runner carries on. |
-   | **Needs you: verify email** | Click the link in your email, then sign in in the tab. The runner carries on. With IMAP set up, this happens by itself. |
+   | **Needs you: sign in** | Notes says what the site said, and there's a screenshot in `screenshots\`. Sign in in the tab (2FA code, different password, …). For an old account with another password, use *Forgot your password?* and set it to your `.env` one. The runner carries on. |
+   | **Needs you: verify email** | Click the link in the company's email, then sign in in the tab. The runner carries on, and also retries the other tabs for the same company. With IMAP set up, this happens by itself. Only one account is created per company per run. |
    | **Failed** | Notes has the reason and a screenshot path. Rerun later with `--redo-failed`. |
    | Posting closed / Already applied / Duplicate | Nothing. Those rows are skipped from now on. |
 
 5. **Finishing:** once every tab is submitted or closed, it stops by itself and prints a summary. **Ctrl+C** stops it early; statuses are already saved. Submitted is only recorded while the runner is open. If you submit a tab after stopping it, type `Submitted` in that row yourself.
-6. **After a run:** open `runner\questions.yaml` (`python questions.py` lists what's waiting). Type an `answer:` for each question it couldn't answer. Next run, those are filled automatically, and rows marked *unanswered questions* are retried.
+6. **After a run:** open `runner\questions.yaml` (`.\questions` lists what's waiting). Type an `answer:` for each question it couldn't answer. Next run, those are filled automatically, and rows marked *unanswered questions* are retried.
 
 ### C. Special cases
 
 - **Transcript as page 2 of the resume:** make a combined PDF, then put its path in that row's **Resume** column (e.g. `resumes/swe_transcript.pdf`):
   ```powershell
-  python -c "from pypdf import PdfWriter; w=PdfWriter(); [w.append(f) for f in ['resumes/swe.pdf','transcript.pdf']]; w.write('resumes/swe_transcript.pdf')"
+  .venv\Scripts\python.exe -c "from pypdf import PdfWriter; w=PdfWriter(); [w.append(f) for f in ['resumes/swe.pdf','transcript.pdf']]; w.write('resumes/swe_transcript.pdf')"
   ```
   A *separate* transcript upload field isn't filled yet. If it's required, the row stops as *unanswered questions* and you upload it in the tab.
-- **Something broke on a page:** while the runner is still open, open a second PowerShell window in `runner\`, activate the venv and run `python dump_fields.py` with that page in front. Send the JSON it prints (also saved in `logs\`) to Claude.
+- **Something broke on a page:** while the runner is still open, open a second PowerShell window in `runner\` and run `.\dump` with that page in front. Send the JSON it prints (also saved in `logs\`) to Claude.
 - **Logs** for every run are in `runner\logs\run_<time>.log`.
 
 ## How it works

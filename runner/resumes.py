@@ -75,8 +75,10 @@ class ResumePicker:
         """(name, resume dict) — name is "default" when nothing matched."""
         override = (override or "").strip()
         if override:
-            t = next((t for t in self.tracks if t.name.lower() == override.lower()), None)
+            t = self._track_named(override)
             f = t.file if t else path(override)
+            if not t and not f.is_file():
+                f = HERE / "resumes" / override  # a bare file name from the resumes folder
             if f.is_file():
                 log.info("  resume: %s (from the sheet's Resume column)", t.name if t else f.name)
                 return (t.name if t else f.name), self._load(f)
@@ -94,6 +96,16 @@ class ResumePicker:
         t, s, hits = best
         log.info("  resume: %s (score %d: %s)", t.name, s, ", ".join(hits[:8]))
         return t.name, self._load(t.file)
+
+    def _track_named(self, text):
+        """The track for "embedded", "embedded_firmware", "embedded.pdf" or "resumes/embedded.pdf"."""
+        key = text.strip().replace("\\", "/").lower()
+        name = key.rsplit("/", 1)[-1]
+        stem = name.rsplit(".", 1)[0] if "." in name else name
+        for t in self.tracks:
+            if key in (t.name.lower(),) or stem in (t.name.lower(), t.file.stem.lower()):
+                return t
+        return None
 
     def vocabulary(self):
         """Every keyword of every track (for the ATS keyword gap)."""

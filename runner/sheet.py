@@ -103,6 +103,8 @@ class XlsxSheet(_Base):
             wb.active.append(HEADERS)
             wb.save(file)
             log.info("Created %s with the expected headers. Add your links and run again.", file)
+        if not dry_run:
+            self._wait_until_closed()
         self.wb = openpyxl.load_workbook(file)
         self.ws = self.wb[worksheet] if worksheet else self.wb.worksheets[0]
 
@@ -120,6 +122,23 @@ class XlsxSheet(_Base):
             cell = self.ws.cell(r, link_col)
             row.link = (cell.hyperlink.target if cell.hyperlink and cell.hyperlink.target else _link_text(cell.value))
             self.rows.append(row)
+
+    def _locked(self):
+        try:
+            with open(self.path, "r+b"):
+                return False
+        except PermissionError:
+            return True
+
+    def _wait_until_closed(self):
+        """Excel locks the file while it's open, and nothing could be saved: wait for it."""
+        if not self._locked():
+            return
+        log.warning("%s is open in Excel. Close it (save your edits first) and the run starts by itself. "
+                    "Ctrl+C to cancel.", self.path.name)
+        while self._locked():
+            time.sleep(2)
+        log.info("Thanks, %s is closed.", self.path.name)
 
     def _write(self, num, vals):
         for k, v in vals.items():
@@ -148,7 +167,13 @@ class XlsxSheet(_Base):
             if self._dirty:
                 time.sleep(2)
         if self._dirty:
-            log.error("Could not save %s. Statuses from this run were NOT written.", self.path)
+            backup = self.path.with_name(f"{self.path.stem} (unsaved {datetime.now():%Y-%m-%d %H%M}){self.path.suffix}")
+            try:
+                self.wb.save(backup)
+                log.error("Could not save %s (still open in Excel?). This run's statuses are in %s: "
+                          "close Excel and use that file instead (rename it to %s).", self.path.name, backup.name, self.path.name)
+            except OSError:
+                log.error("Could not save %s. Statuses from this run were NOT written.", self.path)
 
 
 class GoogleSheet(_Base):

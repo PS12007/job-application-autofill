@@ -94,6 +94,7 @@ class Runner:
         self.run_cfg = cfg["run"]
         self.row = None
         self.applied = set()  # tenants (company Workday sites) with a Submitted row
+        self.accounts = {}  # tenant -> (status, notes) after this run tried to create an account there
 
     # ------------------------------------------------------------ entry points
 
@@ -182,10 +183,11 @@ class Runner:
     def finish(self, out, row):
         if out.status not in (S.CLOSED, S.ALREADY):
             out.notes = self.tag(row, out.notes)
-        if out.status == S.FAILED:
+        if out.status in (S.FAILED, S.NEEDS_SIGNIN):
             shot = self.screenshot(row)
             if shot:
                 out.notes = f"{out.notes} | screenshot: {shot}"
+        if out.status == S.FAILED:
             out.keep_open = bool(self.run_cfg["keep_failed_tabs"])
         if len(out.notes) > 1500:
             out.notes = out.notes[:1499] + "…"
@@ -208,6 +210,7 @@ class Runner:
         """Get to the application form. Returns an Outcome to stop, or None at the form."""
         page, br = self.page, self.br
         tried_signin = tried_create = False
+        signins = 0  # sign-in attempts (one more is allowed right after creating the account)
         apply_clicks = email_clicks = 0
         chose = False
         while True:
@@ -273,16 +276,31 @@ class Runner:
             if state == "signin":
                 if not self.password:
                     return Outcome(S.NEEDS_SIGNIN, "No WORKDAY_PASSWORD in runner/.env.")
-                if tried_signin:
-                    err = gate.errors_text(page)
+                err = gate.errors_text(page) if signins else ""
+                if err:
+                    log.info("  the site says: %s", err[:200])
+                if tried_create:
+                    # Back on sign-in after creating the account: verify first, or just sign in.
+                    if gate.VERIFY_RX.search(f"{err}\n{gate.page_text(page, 8000)}"):
+                        return self._account_outcome(page, S.NEEDS_VERIFY,
+                                                     "Account created. Verify it from your email, then sign in in this tab.")
+                    if signins >= 2:
+                        return self._account_outcome(page, S.NEEDS_SIGNIN,
+                                                     f"Account created, but signing in with it failed: {err or 'no message shown'}. "
+                                                     "If the site sent you a verification email, verify it, then sign in in this tab.")
+                elif signins:
                     link = gate.find_clickable(page, P.CREATE_ACCOUNT_LINK)
-                    if not tried_create and link and (not err or gate.SIGNIN_FAILED_RX.search(err)):
+                    known = self.accounts.get(tenant(page.url))
+                    if known:  # this run already created / tried the account here: don't do it again
+                        return Outcome(known[0], f"{known[1]} (same company account as an earlier row)")
+                    if link and (not err or gate.SIGNIN_FAILED_RX.search(err)):
                         log.info("  sign-in didn't work; trying to create an account")
                         gate.click(link, "create account link")
                         gate.wait_change(page, br, "signin")
                         continue
                     return Outcome(S.NEEDS_SIGNIN, f"Sign-in failed: {err or 'still on the sign-in page'}")
                 tried_signin = True
+                signins += 1
                 log.info("  signing in as %s", self.email)
                 self.sign_in()
                 gate.wait_change(page, br, "signin", watch_errors=True)
@@ -301,9 +319,16 @@ class Runner:
                     continue
                 if tried_create:
                     err = gate.errors_text(page)
+                    if err:
+                        log.info("  the site says: %s", err[:200])
                     if err and gate.EXISTS_RX.search(err):
-                        return Outcome(S.NEEDS_SIGNIN, "An account exists but sign-in failed (different password?).")
-                    return Outcome(S.NEEDS_SIGNIN, f"Account creation didn't finish: {err or 'still on the form'}")
+                        return self._account_outcome(page, S.NEEDS_SIGNIN,
+                                                     "You already have an account here with a different password. Use "
+                                                     "\"Forgot your password?\" in this tab and set it to your usual one.")
+                    return self._account_outcome(page, S.NEEDS_SIGNIN, f"Account creation didn't finish: {err or 'still on the form'}")
+                known = self.accounts.get(tenant(page.url))
+                if known:
+                    return Outcome(known[0], f"{known[1]} (same company account as an earlier row)")
                 if self.dry_run:
                     return Outcome(S.DRY_RUN, "Would create an account here (skipped in dry run).")
                 tried_create = True
@@ -317,6 +342,11 @@ class Runner:
             state = gate.wait_change(page, br, "unknown", timeout_s=15)
             if state == "unknown":
                 return Outcome(S.FAILED, "Couldn't find an Apply button or the application form.")
+
+    def _account_outcome(self, page, status, notes):
+        """Remember how account creation went at this company, so later rows don't repeat it."""
+        self.accounts[tenant(page.url)] = (status, notes)
+        return Outcome(status, notes)
 
     def click_apply(self):
         page = self.page
