@@ -7,6 +7,102 @@ Hard rules, enforced in code:
 - It **never solves or bypasses CAPTCHAs** or bot checks. It flags the row and moves on.
 - **No credentials in code or the sheet.** The password lives in `.env`, which is gitignored.
 
+## Step by step (Windows)
+
+All commands are typed in **PowerShell**. The paths assume the repo is at `C:\-CS\myworkday`.
+
+### A. One-time setup
+
+1. **Open PowerShell in the runner folder and set up Python:**
+   ```powershell
+   cd C:\-CS\myworkday\runner
+   python -m venv .venv                      # skip if the .venv folder already exists
+   .venv\Scripts\activate
+   pip install -r requirements.txt
+   python -m playwright install chromium     # downloads the browser the runner uses
+   ```
+   If `activate` says *running scripts is disabled*, skip it. Then type `.venv\Scripts\python.exe` instead of `python` in every command below.
+
+2. **Password file:**
+   ```powershell
+   copy .env.example .env
+   notepad .env
+   ```
+   Set `WORKDAY_PASSWORD=` to the one password you want for every Workday account. Workday sites usually require at least 8 characters with a number, an uppercase letter and a special character; the requirements are shown on each site's Create Account page.
+   *Optional:* set `IMAP_PASSWORD=` to an email **app password** so "verify your email" is handled for you (see "Email verification").
+
+3. **Your profile:**
+   ```powershell
+   copy profile.example.json profile.json
+   notepad profile.json
+   ```
+   Replace the sample details with yours: name, email, phone, address, work authorization, education, experience, links, disclosures and saved answers. See "profile.json" below.
+
+4. **Your resumes:**
+   - **Main resume** (required): `runner\resume.pdf`. That's the `resumePath` in `profile.json`.
+   - **Resumes per job type** (optional): PDFs in `runner\resumes\`, named as in "Resumes per job" (`swe.pdf`, `backend.pdf`, `ml.pdf`, `embedded.pdf`, …). Make only the ones you need; any other job gets the main resume.
+   - **Cover letters** (optional): `runner\cover_letters\`, then set them in `resumes.yaml`.
+
+5. **The spreadsheet** `runner\applications.xlsx`. Running `python apply.py` once creates it if it's missing. Row 1 holds the headers:
+
+   | Row ID | Company | Role | Link | Status | Notes | Last Updated | Resume |
+   |---|---|---|---|---|---|---|---|
+   | 1 | NVIDIA | Firmware Engineer | https://nvidia.wd5.myworkdayjobs.com/… | | | | |
+
+   - **Fill in:** Company, Role and Link (the job posting URL), one job per row from row 2.
+   - **Leave blank:** Status, Notes and Last Updated. The runner writes them.
+   - **Resume** (optional): a resume type (`ml`) or a file path, to force a resume for that row.
+
+6. **First test:** add 2–3 real job links, **save and close Excel**, then run `python apply.py --count 3` (see B). If a page goes wrong, see "When selectors break" below.
+
+### B. Every time you use it
+
+1. Add new rows to `applications.xlsx`. **Save and close it** (the runner can't save while Excel has it open).
+2. Start it:
+   ```powershell
+   cd C:\-CS\myworkday\runner
+   .venv\Scripts\activate
+   python apply.py
+   ```
+   Useful options (combine as you like):
+   ```powershell
+   python apply.py --count 5                 # only the next 5 applications
+   python apply.py --start 12                # start at Excel row 12 (row 2 = first job)
+   python apply.py --start 12 --count 5      # 5 applications from row 12
+   python apply.py --max-tabs 3              # at most 3 tabs waiting for you at once
+   python apply.py --redo-failed             # also retry rows marked Failed
+   python apply.py --force --start 7 --count 1   # redo row 7 whatever its status
+   python apply.py --dry-run --count 2       # test: fill the first page only, change nothing
+   ```
+   Without `--start` it still skips finished rows (Submitted, Ready, Already applied, Posting closed, Duplicate, or any status you typed yourself). So it always carries on where it left off.
+3. **Use your computer normally.** The runner opens its *own* browser window, separate from your Chrome.
+   - Minimize it if you like, but don't close it or the PowerShell window.
+   - Don't click inside the tab it's currently filling.
+4. **When you get a notification**, switch to the runner's window and look at the Status column / tab:
+
+   | Status | What you do |
+   |---|---|
+   | **Ready to submit** | Check every page of the application, then click **Submit** yourself. The row turns *Submitted* and the tab closes. |
+   | **Needs you: unanswered questions** | Answer the questions in that tab and click through to Review. The row turns *Ready to submit*. Then submit. |
+   | **Needs you: CAPTCHA** | Solve it in the tab. The runner carries on filling. |
+   | **Needs you: sign in** | Sign in in the tab (2FA code, different password, …). The runner carries on. |
+   | **Needs you: verify email** | Click the link in your email, then sign in in the tab. The runner carries on. With IMAP set up, this happens by itself. |
+   | **Failed** | Notes has the reason and a screenshot path. Rerun later with `--redo-failed`. |
+   | Posting closed / Already applied / Duplicate | Nothing. Those rows are skipped from now on. |
+
+5. **Finishing:** once every tab is submitted or closed, it stops by itself and prints a summary. **Ctrl+C** stops it early; statuses are already saved. Submitted is only recorded while the runner is open. If you submit a tab after stopping it, type `Submitted` in that row yourself.
+6. **After a run:** open `runner\questions.yaml` (`python questions.py` lists what's waiting). Type an `answer:` for each question it couldn't answer. Next run, those are filled automatically, and rows marked *unanswered questions* are retried.
+
+### C. Special cases
+
+- **Transcript as page 2 of the resume:** make a combined PDF, then put its path in that row's **Resume** column (e.g. `resumes/swe_transcript.pdf`):
+  ```powershell
+  python -c "from pypdf import PdfWriter; w=PdfWriter(); [w.append(f) for f in ['resumes/swe.pdf','transcript.pdf']]; w.write('resumes/swe_transcript.pdf')"
+  ```
+  A *separate* transcript upload field isn't filled yet. If it's required, the row stops as *unanswered questions* and you upload it in the tab.
+- **Something broke on a page:** while the runner is still open, open a second PowerShell window in `runner\`, activate the venv and run `python dump_fields.py` with that page in front. Send the JSON it prints (also saved in `logs\`) to Claude.
+- **Logs** for every run are in `runner\logs\run_<time>.log`.
+
 ## How it works
 
 ```
@@ -31,7 +127,7 @@ The form itself is filled by the extension, so selector fixes for form fields go
 
 **Why Chromium and not Chrome:** Google Chrome removed the command-line switch that loads an unpacked extension, so the runner uses the Chromium that Playwright installs. It still uses a persistent profile, so logins and cookies carry over between runs. It's a separate browser from your everyday Chrome.
 
-## Setup
+## Setup (details)
 
 1. **Python 3.11+** (`python --version`).
 2. In this folder:
