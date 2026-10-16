@@ -246,7 +246,7 @@ Each run loads `profile.json` into the runner browser's copy of the extension. T
 
 ## Resumes per job
 
-Put your resumes in `runner/resumes/` and point the tracks in `resumes.yaml` at them (the first run creates it from `resumes.example.yaml`). There are 20 tracks with about 930 keywords: ml, data_science, data_engineering, embedded_firmware, hardware, asic_fpga, robotics_controls, security, devops_cloud, mobile, frontend, fullstack, backend, game_dev, quant, qa_test, it_support, product, mechanical, swe.
+Put your resumes in `runner/resumes/` and point the tracks in `resumes.yaml` at them (the first run creates it from `resumes.example.yaml`). There are 21 tracks with about 1,000 keywords: ml, data_science, data_engineering, embedded_firmware, hardware, asic_fpga, robotics_controls, security, devops_cloud, mobile, frontend, fullstack, backend, game_dev, quant, qa_test, it_support, product, mechanical, business (analyst, finance, consulting, operations), swe.
 
 Each job is scored against every track that has a file:
 - **+5** per title phrase found in the job title (your Role column; the page heading if Role is empty)
@@ -347,3 +347,10 @@ It prints JSON with every visible field (tag, type, data-automation-id, label, v
 - **Google Sheets** smart chips aren't read as links; paste plain URLs.
 - Workday shows "Chrome is being controlled by automated test software". Some sites may treat the browser as a bot; that's flagged as *Needs you: CAPTCHA*, never worked around.
 - Non-Workday sites get the extension's generic filler. Account creation is only automated where the sign-in pages look like Workday's (email + password + verify password).
+
+
+
+cd C:\-CS\myworkday\runner
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m playwright install chromium
+.venv\Scripts\python.exe apply.py --count 3

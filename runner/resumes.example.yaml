@@ -41,7 +41,7 @@ tracks:
 
   data_science:
     file: resumes/data_science.pdf
-    titles: [data scientist, data science, data analyst, business analyst, analytics engineer, business intelligence,
+    titles: [data scientist, data science, data analyst, analytics engineer, business intelligence,
              bi analyst, bi developer, product analyst, quantitative analyst, statistician, decision scientist,
              insights analyst, reporting analyst]
     keywords: [statistics, statistical, a/b testing, ab testing, experimentation, hypothesis testing, regression,
@@ -201,6 +201,25 @@ tracks:
     keywords: [solidworks, catia, creo, nx, autocad, inventor, fusion 360, gd&t, cad, fea, ansys, abaqus, cfd,
                tolerance analysis, injection molding, machining, cnc, sheet metal, 3d printing, additive
                manufacturing, prototyping, dfm, dfa, thermal analysis, lean manufacturing, six sigma]
+
+  business:  # business / finance / operations / consulting analyst roles
+    file: resumes/business.pdf
+    titles: [business analyst, business systems analyst, business operations, bizops, business development,
+             financial analyst, finance analyst, fp&a, investment banking, investment analyst, equity research,
+             corporate finance, operations analyst, strategy analyst, strategy and operations, strategy & operations,
+             management consultant, consultant, consulting, business consultant, strategy consultant,
+             sales analyst, sales operations, revenue operations, revops, marketing analyst, commercial analyst,
+             pricing analyst, revenue analyst, risk analyst, credit analyst, supply chain analyst,
+             procurement analyst, planning analyst, budget analyst, accountant, accounting, audit, auditor,
+             analyst, associate analyst, rotational program, leadership development program]
+    keywords: [excel, advanced excel, pivot tables, vlookup, xlookup, powerpoint, financial modeling, financial analysis,
+               fp&a, budgeting, variance analysis, p&l, valuation, dcf, accounting, gaap, ifrs, bloomberg,
+               business case, roi, market research, competitive analysis, market sizing, business process,
+               process improvement, process mapping, requirements gathering, business requirements, brd,
+               user acceptance testing, uat, visio, bpmn, stakeholder management, change management,
+               project management, sql, tableau, power bi, looker, dashboards, kpi, kpis, reporting,
+               salesforce, crm, erp, sap, oracle, netsuite, hubspot, supply chain, procurement, inventory,
+               logistics, forecasting, data analysis, presentations, client-facing, case interview, cfa, cpa]
 
   swe:  # general software engineering: the catch-all, so it's last
     file: resumes/swe.pdf
