@@ -1,3 +1,19 @@
 # Exported profile backups contain personal data and your resume — never commit them
 workday-profile-*.json
 *.pdf
+
+# Runner: secrets, personal data, browser profile, outputs
+runner/.env
+runner/.runner-ext-id
+runner/resumes.yaml
+runner/resumes/
+runner/config.yaml
+runner/profile.json
+runner/service-account.json
+runner/*.xlsx
+runner/~$*.xlsx
+runner/chrome-profile/
+runner/screenshots/
+runner/logs/
+runner/.venv/
+__pycache__/

@@ -1,0 +1,205 @@
+# Pick a different resume per job. Copy to resumes.yaml (apply.py does this on the first
+# run), put your PDFs in runner/resumes/, and set each track's "file".
+#
+# How a job is scored against each track:
+#   +5 for each "titles" phrase found in the job title (the sheet's Role column + the page's job title)
+#   +2 for each "keywords" word found in the job title
+#   +1 for each "keywords" word found in the job description (at most `description_cap` points)
+# The highest score wins. Below `min_score`, or if the track's file doesn't exist yet,
+# the default resume (resumePath in profile.json) is used. Ties go to the track listed first,
+# so specific tracks come before general ones.
+#
+# Override per job: add a "Resume" column to the sheet and put a track name (e.g. ml) or a
+# file path in it. The chosen track is noted in the row's Notes as [resume: name].
+#
+# Matching ignores case and only matches whole words ("ml" doesn't match "html").
+# Delete tracks you don't need; add your own the same way.
+
+min_score: 4
+description_cap: 12
+use_description: true
+
+tracks:
+  ml:
+    file: resumes/ml.pdf
+    titles: [machine learning, ml engineer, mle, ai engineer, artificial intelligence, deep learning, applied scientist,
+             research scientist, computer vision, nlp, natural language, llm, generative ai, genai, perception engineer,
+             ml ops, mlops, ml infrastructure, ai/ml, ml platform, speech, recommender, ranking engineer]
+    keywords: [pytorch, tensorflow, jax, keras, scikit-learn, sklearn, huggingface, hugging face, transformers, llm, llms,
+               large language model, rag, retrieval augmented, fine-tuning, fine tuning, prompt engineering, embeddings,
+               vector database, langchain, cuda, triton, onnx, tensorrt, model training, model serving, inference,
+               neural network, neural networks, cnn, rnn, lstm, reinforcement learning, computer vision, opencv,
+               object detection, segmentation, nlp, diffusion, gpt, bert, mlflow, kubeflow, sagemaker, vertex ai,
+               feature engineering, model deployment, mlops, distributed training]
+
+  data_science:
+    file: resumes/data_science.pdf
+    titles: [data scientist, data science, data analyst, business analyst, analytics engineer, business intelligence,
+             bi analyst, bi developer, product analyst, quantitative analyst, statistician, decision scientist,
+             insights analyst, reporting analyst]
+    keywords: [statistics, statistical, a/b testing, ab testing, experimentation, hypothesis testing, regression,
+               r programming, rstudio, pandas, numpy, scipy, jupyter, sql, tableau, power bi, looker, excel, dashboards,
+               kpi, kpis, forecasting, time series, causal inference, bayesian, data visualization, matplotlib,
+               seaborn, stakeholder, insights, metrics, cohort, segmentation, predictive modeling]
+
+  data_engineering:
+    file: resumes/data_engineering.pdf
+    titles: [data engineer, data engineering, etl developer, big data, data platform, data infrastructure,
+             analytics engineer, database engineer, database administrator, dba, data architect, pipeline engineer]
+    keywords: [etl, elt, data pipeline, data pipelines, spark, pyspark, hadoop, hive, kafka, flink, airflow, dagster,
+               prefect, dbt, snowflake, redshift, bigquery, databricks, delta lake, data lake, data warehouse,
+               lakehouse, parquet, avro, glue, emr, kinesis, batch processing, stream processing, streaming,
+               data modeling, schema design, postgresql, cassandra, mongodb, nosql, cdc, data quality]
+
+  embedded_firmware:
+    file: resumes/embedded.pdf
+    titles: [embedded, firmware, embedded software, embedded systems, bsp, device driver, driver engineer,
+             low level, microcontroller, iot engineer, rtos, bootloader, kernel engineer, linux kernel]
+    keywords: [firmware, embedded c, c++, rtos, freertos, zephyr, threadx, bare metal, bare-metal, microcontroller,
+               mcu, arm cortex, cortex-m, stm32, nrf52, esp32, pic, avr, risc-v, uart, spi, i2c, i2s, can bus, canbus,
+               usb, ble, bluetooth, gpio, adc, dac, pwm, dma, interrupt, interrupts, bootloader, device drivers,
+               linux kernel, yocto, buildroot, embedded linux, jtag, oscilloscope, logic analyzer, low power,
+               autosar, misra, memory constrained, hal, register level, cmake]
+
+  hardware:
+    file: resumes/hardware.pdf
+    titles: [hardware engineer, electrical engineer, electronics engineer, pcb, board design, hardware design,
+             power electronics, analog, rf engineer, hardware test, test engineer hardware, signal integrity,
+             power engineer, circuit design, systems hardware, hardware validation, electrical design]
+    keywords: [pcb, schematic, schematics, altium, kicad, cadence allegro, orcad, eagle, spice, ltspice, circuit design,
+               analog, mixed signal, power supply, power electronics, dc-dc, buck, boost, motor drive, emc, emi,
+               signal integrity, power integrity, high speed design, ddr, pcie, rf, antenna, oscilloscope,
+               multimeter, spectrum analyzer, bring-up, board bring-up, soldering, pcb layout, bom, dfm, dft,
+               component selection, thermal, battery, bms, labview, hardware validation]
+
+  asic_fpga:
+    file: resumes/asic_fpga.pdf
+    titles: [fpga, asic, rtl, digital design, design verification, verification engineer, dv engineer, soc,
+             silicon, physical design, chip design, cpu design, gpu design, logic design, hardware architect,
+             post-silicon, validation engineer silicon, dft engineer]
+    keywords: [verilog, systemverilog, vhdl, rtl, uvm, fpga, asic, xilinx, vivado, intel quartus, altera, synthesis,
+               timing closure, sta, static timing, place and route, formal verification, testbench, coverage,
+               simulation, modelsim, questasim, vcs, synopsys, cadence, axi, amba, ahb, apb, risc-v, microarchitecture,
+               clock domain crossing, cdc, low power design, upf, hls, high level synthesis, emulation, tapeout]
+
+  robotics_controls:
+    file: resumes/robotics.pdf
+    titles: [robotics, robot, controls engineer, control systems, autonomy, autonomous, motion planning,
+             mechatronics, automation engineer, plc, slam, localization, guidance navigation, gnc, drone, uav,
+             self-driving, autonomous vehicle, adas]
+    keywords: [ros, ros2, gazebo, slam, localization, path planning, motion planning, kinematics, dynamics,
+               control theory, pid, mpc, model predictive control, kalman filter, sensor fusion, lidar, imu,
+               odometry, actuator, actuators, servo, motor control, simulink, matlab, plc, ladder logic, scada,
+               mechatronics, manipulator, trajectory, state estimation, point cloud, perception]
+
+  security:
+    file: resumes/security.pdf
+    titles: [security engineer, cybersecurity, cyber security, information security, infosec, application security,
+             appsec, product security, penetration tester, pentester, security analyst, soc analyst, threat,
+             incident response, red team, blue team, vulnerability, offensive security, cloud security,
+             detection engineer, security operations, grc]
+    keywords: [penetration testing, pentest, vulnerability, vulnerabilities, owasp, threat modeling, siem, splunk,
+               soc, incident response, forensics, malware, reverse engineering, burp suite, metasploit, nmap,
+               wireshark, iam, identity and access, zero trust, encryption, cryptography, pki, tls, firewall, ids,
+               ips, edr, xdr, nist, iso 27001, soc 2, compliance, ctf, exploit, fuzzing, secure code review,
+               devsecops, sast, dast]
+
+  devops_cloud:
+    file: resumes/devops.pdf
+    titles: [devops, site reliability, sre, infrastructure engineer, platform engineer, cloud engineer,
+             cloud architect, systems engineer, build engineer, release engineer, production engineer,
+             reliability engineer, network engineer, linux administrator, systems administrator, sysadmin,
+             kubernetes engineer, observability]
+    keywords: [kubernetes, k8s, docker, containers, terraform, ansible, puppet, chef, helm, argo, argocd, jenkins,
+               github actions, gitlab ci, ci/cd, cicd, aws, azure, gcp, google cloud, ec2, s3, lambda, cloudformation,
+               pulumi, prometheus, grafana, datadog, new relic, elk, observability, monitoring, alerting, on-call,
+               incident, slo, sli, linux, bash, shell scripting, nginx, load balancing, networking, dns, tcp/ip,
+               infrastructure as code, iac, service mesh, istio, autoscaling]
+
+  mobile:
+    file: resumes/mobile.pdf
+    titles: [ios, android, mobile, mobile developer, mobile engineer, react native, flutter, app developer]
+    keywords: [swift, swiftui, objective-c, uikit, xcode, kotlin, jetpack compose, android studio, java android,
+               react native, flutter, dart, mobile app, app store, google play, push notifications, core data,
+               room database, gradle, cocoapods, expo, mobile ui, accessibility]
+
+  frontend:
+    file: resumes/frontend.pdf
+    titles: [frontend, front-end, front end, ui engineer, ui developer, web developer, javascript engineer,
+             react developer, ux engineer, design engineer, web engineer]
+    keywords: [react, reactjs, react.js, angular, vue, vue.js, svelte, next.js, nextjs, nuxt, typescript, javascript,
+               html, css, sass, scss, tailwind, redux, zustand, webpack, vite, babel, jest, cypress, playwright,
+               storybook, responsive design, accessibility, a11y, wcag, figma, web performance, spa, dom,
+               component library, design system]
+
+  fullstack:
+    file: resumes/fullstack.pdf
+    titles: [full stack, full-stack, fullstack]
+    keywords: [react, node, node.js, nodejs, express, next.js, typescript, javascript, rest api, graphql, postgresql,
+               mongodb, django, flask, rails, ruby on rails, laravel, php, mern, mean, html, css, web application]
+
+  backend:
+    file: resumes/backend.pdf
+    titles: [backend, back-end, back end, server engineer, api engineer, distributed systems, platform software,
+             services engineer, java developer, golang developer, python developer]
+    keywords: [java, spring, spring boot, golang, python, django, flask, fastapi, node.js, c#, .net, asp.net,
+               ruby, rails, scala, kotlin, rust, rest api, restful, grpc, graphql, microservices,
+               distributed systems, postgresql, mysql, redis, kafka, rabbitmq, message queue, caching, scalability,
+               high availability, concurrency, api design, sql, orm]
+
+  game_dev:
+    file: resumes/game_dev.pdf
+    titles: [game developer, game programmer, gameplay, game engineer, graphics engineer, rendering engineer,
+             engine programmer, technical artist, unity developer, unreal developer, xr, ar/vr, vr developer]
+    keywords: [unity, unreal, unreal engine, c#, c++, gameplay, game engine, shaders, hlsl, glsl, opengl, vulkan,
+               directx, metal, rendering, graphics, physics engine, animation, multiplayer, netcode, ar, vr, xr,
+               openxr, 3d math, linear algebra]
+
+  quant:
+    file: resumes/quant.pdf
+    titles: [quant, quantitative developer, quantitative researcher, quantitative trader, trading, algorithmic trading,
+             algo trading, low latency, hft, high frequency, strategist, risk engineer]
+    keywords: [trading, low latency, high frequency, market data, order book, derivatives, fixed income,
+               equities, futures, portfolio, backtesting, alpha, stochastic, time series,
+               c++, kdb, q language, fpga, statistics, probability, finance, fintech]
+
+  qa_test:
+    file: resumes/qa.pdf
+    titles: [qa, quality assurance, test engineer, software test, sdet, automation engineer, test automation,
+             quality engineer, validation engineer, verification and validation, tester]
+    keywords: [test automation, selenium, cypress, playwright, appium, pytest, junit, testng, cucumber, bdd, tdd,
+               manual testing, regression testing, test plans, test cases, qa, quality assurance, jira, testrail,
+               load testing, jmeter, performance testing, api testing, postman, defect tracking]
+
+  it_support:
+    file: resumes/it_support.pdf
+    titles: [it support, help desk, helpdesk, desktop support, technical support, it technician, it specialist,
+             it analyst, service desk, support engineer, field technician, it administrator]
+    keywords: [active directory, office 365, microsoft 365, intune, sccm, jamf, ticketing, servicenow, zendesk,
+               troubleshooting, windows, macos, hardware support, networking, vpn, printers, imaging,
+               end user support, itil, azure ad, entra, password resets, laptops]
+
+  product:
+    file: resumes/product.pdf
+    titles: [product manager, product management, technical product manager, program manager, technical program manager,
+             tpm, project manager, product owner, scrum master, associate product manager, apm]
+    keywords: [roadmap, product roadmap, stakeholders, requirements, user stories, prd, agile, scrum, kanban, jira,
+               prioritization, go-to-market, cross-functional, user research, okrs, metrics, a/b testing,
+               customer discovery, product strategy, backlog]
+
+  mechanical:
+    file: resumes/mechanical.pdf
+    titles: [mechanical engineer, mechanical design, design engineer mechanical, manufacturing engineer,
+             process engineer, product design engineer, aerospace engineer, structural engineer, thermal engineer]
+    keywords: [solidworks, catia, creo, nx, autocad, inventor, fusion 360, gd&t, cad, fea, ansys, abaqus, cfd,
+               tolerance analysis, injection molding, machining, cnc, sheet metal, 3d printing, additive
+               manufacturing, prototyping, dfm, dfa, thermal analysis, lean manufacturing, six sigma]
+
+  swe:  # general software engineering: the catch-all, so it's last
+    file: resumes/swe.pdf
+    titles: [software engineer, software developer, swe, software engineering, developer, programmer,
+             application developer, software development engineer, sde, new grad software, software intern,
+             engineering intern, coop software, co-op software]
+    keywords: [software development, data structures, algorithms, object oriented, oop, design patterns, git,
+               python, java, c++, c#, javascript, typescript, golang, rust, sql, linux, agile, code review, unit testing,
+               apis, debugging, software design, system design]

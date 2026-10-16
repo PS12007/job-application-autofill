@@ -28,21 +28,25 @@
     return { step, ctx };
   }
 
-  async function runFill() {
+  /** overrides: per-run settings (the Python runner forces autoAdvance etc. without saving them). */
+  async function runFill(overrides = {}) {
     if (running) return { error: 'A fill is already running on this page.' };
     running = true;
     const started = Date.now();
     try {
-      const [profile, settings] = await Promise.all([WDA.storage.getProfile(), WDA.storage.getSettings()]);
+      const [profile, stored] = await Promise.all([WDA.storage.getProfile(), WDA.storage.getSettings()]);
+      const settings = { ...stored, ...overrides };
       WDA.settings = settings;
       const total = { filled: 0, skipped: 0, failed: 0, details: [] };
       const labels = [];
       let note = '';
+      let lastStep = 'unknown';
       if (!profile.personal.firstName && !profile.personal.email) note = 'Your profile looks empty: open Profile settings first.';
 
       for (let i = 0; i < MAX_STEPS; i++) {
         const { step, ctx } = await fillCurrentStep(profile, settings);
         labels.push(step.label);
+        lastStep = step.key;
 
         // Decide whether to continue BEFORE summarising (the blocker may add red marks).
         const blocker = settings.autoAdvance ? WDA.advanceBlocker(step, ctx) : null;
@@ -68,7 +72,7 @@
       }
 
       const step = labels.length > 1 ? labels.join(' → ') : labels[0];
-      lastResult = { step, ...total, note, ms: Date.now() - started };
+      lastResult = { step, lastStep, ...total, note, ms: Date.now() - started };
     } catch (e) {
       lastResult = { error: e.message || String(e) };
     } finally {

@@ -1,0 +1,27 @@
+# Copy to config.yaml (apply.py does this for you on the first run) and edit.
+# Relative paths are relative to this runner/ folder.
+
+sheet:
+  backend: xlsx                 # xlsx (local file) or gsheets (Google Sheets)
+  xlsx_path: applications.xlsx  # created with the right headers if it doesn't exist
+  worksheet: ""                 # tab name; blank = first tab
+  gsheets_id: ""                # the long ID in the sheet URL (or paste the whole URL)
+  service_account_file: service-account.json
+
+browser:
+  user_data_dir: chrome-profile # logins and cookies persist here between runs
+  extension_dir: ../extension
+  debug_port: 9333              # lets dump_fields.py attach to the open browser
+
+run:
+  max_tabs: 5                   # default for --max-tabs
+  app_timeout_s: 600            # per application (a long Workday form can take several minutes)
+  delay_between_s: 4            # pause between applications
+  apply_mode: manual            # manual = "Apply Manually", resume = "Autofill with Resume", last = "Use My Last Application"
+  overwrite_existing: true      # replace values Workday pre-filled (e.g. parsed from your resume)
+  keep_failed_tabs: false       # leave Failed tabs open instead of closing them
+  resume_after_you_fix: true    # when a CAPTCHA / sign-in / verify-email tab reaches the form, keep filling
+
+notify:
+  sound: true
+  desktop: true
